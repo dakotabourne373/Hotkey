@@ -1,16 +1,17 @@
-import { Image, ImageBackground } from "expo-image";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { KEYS } from "@/lib/constants";
+import { Image } from "expo-image";
 import { useState, useEffect } from "react";
-import { Button, Pressable, Text, View } from "react-native";
-
-const ip = 'ws://192.168.1.102:8686'
+import { Pressable, View } from "react-native";
 
 export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [websocket, setWebsocket] = useState<WebSocket>();
+  const [ip, setIp] = useState('192.168.1.102:8686');
   const [serverMessage, setServerMessage] = useState("");
 
   useEffect(() => {
-    const ws = new WebSocket(ip);
+    const ws = new WebSocket(`ws://${ip}`);  
 
     ws.onopen = () => {
       console.log("WebSocket connection opened");
@@ -46,17 +47,17 @@ export default function Index() {
     <View
       style={{
         flex: 1,
-        justifyContent: "center",
         alignItems: "center",
+        width: '100%'
       }}
     >
+      <ConnectionBanner connectedServer={isConnected ? ip : undefined} />
       <Pressable onPress={() => {
           console.log('HIT');
           websocket?.send('a');
         }}>
         <Image source={require('@/assets/images/a.png')} style={{width: 200, height: 200}} />
       </Pressable>
-      <Text>{isConnected ? `connected to ${ip}` : 'not connected'}</Text>
     </View>
   );
 }
