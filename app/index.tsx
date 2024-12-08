@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IconFormContext } from "@/context/IconFormContext";
 import { KEYS } from "@/lib/constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
 import { Info, Plus, icons, } from "lucide-react-native";
@@ -111,7 +112,7 @@ const convertStoredHotkeys = (savedHotkeys: SavedHotkeys) => {
 }
 
 const SpecifiedIcon: FC<{ selectedIcon: string | undefined }> = ({ selectedIcon }) => {
-  if (!selectedIcon) return null;
+  if (!selectedIcon || !(selectedIcon in icons)) return null;
 
   const DialogIcon = icons[selectedIcon as unknown as keyof typeof icons];
 
@@ -127,9 +128,29 @@ export default function Index() {
   const [hotkeys, setHotkeys] = useState<HotkeyData[]>([]);
   const [open, setOpen] = useState(false);
   const [desc, setDesc] = useState<string>();
-  const [error, setError] = useState<'icon' | 'desc'>();
+  const [error, setError] = useState<'icon' | 'desc' | 'fetch'>();
 
   const { selectedIcon, setSelectedIcon } = useContext(IconFormContext);
+
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const fetchData = async () => {
+      const data = await AsyncStorage.getItem('hotkeys');
+      if(!data) return {};
+
+      return JSON.parse(data) as SavedHotkeys;
+    }
+
+    fetchData().then((data) => {
+      if(isSubscribed) setHotkeys(convertStoredHotkeys(data));
+    })
+    .catch((e) => setError('fetch'));
+
+    return () => {
+      isSubscribed = false;
+    }
+  }, []);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${ip}`);
@@ -243,7 +264,8 @@ export default function Index() {
 
                 const newHotkey = generateUnusedHotkey(savedHotkeys);
                 if (!newHotkey) return; // TODO: show an error
-                const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, 'test-icon', 'test-desc');
+                const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, selectedIcon, desc);
+                AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
                 setSavedHotkeys(newSavedKeys);
                 setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc }]);
               }}>
