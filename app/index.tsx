@@ -33,7 +33,7 @@ const generateUnusedHotkey = (tree: SavedHotkeys, maxDepth = 4): KEYS[] | null =
     if (depth === 0) return null;
 
     for (const key of ALL_KEYS) {
-      if(prefix.includes(key)) continue;
+      if (prefix.includes(key)) continue;
       if (!(key in currentTree)) return [...prefix, key];
 
       const nextLevel = currentTree[key] as SavedHotkeys;
@@ -49,7 +49,7 @@ const generateUnusedHotkey = (tree: SavedHotkeys, maxDepth = 4): KEYS[] | null =
 
 const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: string) => {
   function addRecursive(currentTree: SavedHotkeys, remainingKeys: KEYS[]): SavedHotkeys {
-    if(remainingKeys.length === 0) {
+    if (remainingKeys.length === 0) {
       return {
         ...currentTree,
         icon,
@@ -63,8 +63,9 @@ const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: st
     return {
       ...currentTree,
       [currentKey]: {
-        ...currentNode, 
-        ...addRecursive(currentNode || {}, restKeys)}
+        ...currentNode,
+        ...addRecursive(currentNode || {}, restKeys)
+      }
     };
   }
 
@@ -130,13 +131,18 @@ export default function Index() {
         // console.log('DAKOTA-before', savedHotkeys)
         const newHotkey = generateUnusedHotkey(savedHotkeys);
         console.log('DAKOTA-newHotkey', newHotkey);
-        if(!newHotkey) return; // TODO: show an error
+        if (!newHotkey) return; // TODO: show an error
         const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, 'test-icon', 'test-desc');
         setSavedHotkeys(newSavedKeys);
         console.log('DAKOTA-after', JSON.stringify(newSavedKeys, null, 2));
       }}>
         <Text>Generate new hotkey</Text>
       </Button>
+      <Link href='/modal' asChild>
+        <Button>
+          <Text>Go to Icon Screen</Text>
+        </Button>
+      </Link>
     </View>
   );
 }
