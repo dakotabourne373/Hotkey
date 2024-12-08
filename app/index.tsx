@@ -1,22 +1,31 @@
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { IconFormContext } from "@/context/IconFormContext";
 import { KEYS } from "@/lib/constants";
-import { Image } from "expo-image";
+import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
-import { Plus, icons, } from "lucide-react-native";
+import { Info, Plus, icons, } from "lucide-react-native";
 import { useState, useEffect, FC, useContext } from "react";
-import { Pressable, View, Text } from "react-native";
+import { Pressable, View, Text, Dimensions } from "react-native";
+type HotkeyNode = {
+  icon: string;
+  desc: string;
+} & {
+  [key in KEYS]?: SavedHotkeys;
+};
 
 type SavedHotkeys = {
-  [key in KEYS]?: {
-    icon: string;
-    desc: string;
-  } & {
-    [key in KEYS]?: SavedHotkeys;
-  }
-}
+  [key in KEYS]?: HotkeyNode
+};
+
+type HotkeyData = {
+  keys: string[];
+  icon: string;
+  desc: string;
+};
 
 const ALL_KEYS = ['F13', 'F14',
   'F15',
@@ -75,8 +84,34 @@ const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: st
   return addRecursive(tree, keys);
 }
 
-const SpecifiedIcon: FC<{selectedIcon: string | undefined}> = ({selectedIcon}) => {
-  if(!selectedIcon) return null;
+const convertStoredHotkeys = (savedHotkeys: SavedHotkeys) => {
+  const res: HotkeyData[] = [];
+
+  function recurse(obj: HotkeyNode, path: string[]): void {
+    const { icon, desc } = obj;
+
+    if (icon && desc) {
+      res.push({ keys: path, icon, desc });
+    }
+
+    for (const key in obj) {
+      if (key !== 'icon' && key !== 'desc') {
+        const value = obj[key as KEYS];
+        if (value && typeof value === 'object') recurse(value as HotkeyNode, [...path, key]);
+      }
+    }
+  }
+
+  for (const key in savedHotkeys) {
+    const node = savedHotkeys[key as KEYS];
+    recurse(node as HotkeyNode, [key]);
+  }
+
+  return res;
+}
+
+const SpecifiedIcon: FC<{ selectedIcon: string | undefined }> = ({ selectedIcon }) => {
+  if (!selectedIcon) return null;
 
   const DialogIcon = icons[selectedIcon as unknown as keyof typeof icons];
 
@@ -89,9 +124,12 @@ export default function Index() {
   const [ip, setIp] = useState('192.168.1.102:8686');
   const [serverMessage, setServerMessage] = useState("");
   const [savedHotkeys, setSavedHotkeys] = useState({});
+  const [hotkeys, setHotkeys] = useState<HotkeyData[]>([]);
   const [open, setOpen] = useState(false);
+  const [desc, setDesc] = useState<string>();
+  const [error, setError] = useState<'icon' | 'desc'>();
 
-  const {selectedIcon, setSelectedIcon} = useContext(IconFormContext);
+  const { selectedIcon, setSelectedIcon } = useContext(IconFormContext);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${ip}`);
@@ -126,22 +164,105 @@ export default function Index() {
     };
   }, []);
 
+  const { width } = Dimensions.get('window');
+
   return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        width: '100%'
-      }}
-    >
-      <ConnectionBanner connectedServer={isConnected ? ip : undefined} />
-      <Pressable onPress={() => {
+    <FlashList
+      numColumns={4}
+      data={hotkeys}
+      renderItem={({ item }) => (
+        <Pressable
+          onPress={() => {
+            console.log('HIT');
+            websocket?.send('a');
+          }}
+          style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44' }}
+        >
+          <SpecifiedIcon selectedIcon={item.icon} />
+          <Label>{item.desc}</Label>
+        </Pressable>
+      )}
+      ListHeaderComponent={<ConnectionBanner connectedServer={isConnected ? ip : undefined} />}
+      ListFooterComponent={
+        <Dialog open={open} onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          !isOpen && setSelectedIcon(undefined);
+        }} style={{ width: '100%' }}>
+          <DialogTrigger>
+            <Button onPress={() => setOpen(true)}>
+              <Text>Add new Hotkey!</Text>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add a new hotkey</DialogTitle>
+              <DialogDescription>
+                Select icon, customize your description, then sync the hotkey. That's it!
+              </DialogDescription>
+            </DialogHeader>
+            <View style={{ gap: 16, marginVertical: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Label nativeID="icon">{selectedIcon ? 'Icon selected!' : 'Select an icon'}</Label>
+                {selectedIcon ?
+                  (<SpecifiedIcon selectedIcon={selectedIcon} />) :
+                  (
+                    <Link asChild href='/modal' aria-labelledby="icon">
+                      <Button>
+                        <Plus color='black' />
+                      </Button>
+                    </Link>
+                  )
+                }
+              </View>
+              <View style={{ gap: 8 }}>
+                <Label nativeID="desc">Set a description</Label>
+                <Input
+                  placeholder="Mute Mic"
+                  maxLength={40}
+                  aria-labelledby="desc"
+                  onChangeText={setDesc}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <Label>See instructions for Recording the hotkey</Label>
+                <Info color='white' />
+              </View>
+            </View>
+            <DialogFooter>
+              <DialogClose asChild onPress={() => {
+                if (!selectedIcon) {
+                  setError('icon');
+                  return;
+                }
+                if (!desc) {
+                  setError('desc');
+                  return;
+                }
+
+                const newHotkey = generateUnusedHotkey(savedHotkeys);
+                if (!newHotkey) return; // TODO: show an error
+                const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, 'test-icon', 'test-desc');
+                setSavedHotkeys(newSavedKeys);
+                setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc }]);
+              }}>
+                <Button>
+                  <Text>Save</Text>
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>}
+    />
+  );
+}
+
+{/* <Pressable onPress={() => {
         console.log('HIT');
         websocket?.send('a');
       }}>
         <Image source={require('@/assets/images/a.png')} style={{ width: 200, height: 200 }} />
-      </Pressable>
-      <Button onPress={() => {
+      </Pressable> */}
+{/* <Button onPress={() => {
         // console.log('DAKOTA-before', savedHotkeys)
         const newHotkey = generateUnusedHotkey(savedHotkeys);
         console.log('DAKOTA-newHotkey', newHotkey);
@@ -151,45 +272,9 @@ export default function Index() {
         console.log('DAKOTA-after', JSON.stringify(newSavedKeys, null, 2));
       }}>
         <Text>Generate new hotkey</Text>
-      </Button>
-      <Link href='/modal' asChild>
+      </Button> */}
+{/* <Link href='/modal' asChild>
         <Button>
           <Text>Go to Icon Screen</Text>
         </Button>
-      </Link>
-      <Dialog open={open} onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        !isOpen && setSelectedIcon(undefined);
-      }} style={{ width: '100%' }}>
-        <DialogTrigger>
-          <Button onPress={() => setOpen(true)}>
-            <Text>Add new Hotkey!</Text>
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add a new hotkey</DialogTitle>
-            <DialogDescription>
-              Select icon, customize your description, then sync the hotkey. That's it!
-            </DialogDescription>
-          </DialogHeader>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <Text style={{ color: 'white' }}>{selectedIcon ? 'Icon selected!' : 'Select an icon'}</Text>
-            {selectedIcon ? (<SpecifiedIcon selectedIcon={selectedIcon} />) : (<Link asChild href='/modal'>
-              <Button>
-                <Plus color='black' />
-              </Button>
-            </Link>)}
-          </View>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button>
-                <Text>Save</Text>
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </View>
-  );
-}
+      </Link> */}
