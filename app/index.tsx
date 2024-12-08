@@ -27,7 +27,7 @@ type SavedHotkeys = {
 };
 
 type HotkeyData = {
-  keys: string[];
+  keys: KEYS[];
   icon: string;
   desc: string;
 };
@@ -92,7 +92,7 @@ const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: st
 const convertStoredHotkeys = (savedHotkeys: SavedHotkeys) => {
   const res: HotkeyData[] = [];
 
-  function recurse(obj: HotkeyNode, path: string[]): void {
+  function recurse(obj: HotkeyNode, path: KEYS[]): void {
     const { icon, desc } = obj;
 
     if (icon && desc) {
@@ -102,17 +102,50 @@ const convertStoredHotkeys = (savedHotkeys: SavedHotkeys) => {
     for (const key in obj) {
       if (key !== 'icon' && key !== 'desc') {
         const value = obj[key as KEYS];
-        if (value && typeof value === 'object') recurse(value as HotkeyNode, [...path, key]);
+        if (value && typeof value === 'object') recurse(value as HotkeyNode, [...path, key as KEYS]);
       }
     }
   }
 
   for (const key in savedHotkeys) {
     const node = savedHotkeys[key as KEYS];
-    recurse(node as HotkeyNode, [key]);
+    recurse(node as HotkeyNode, [key as KEYS]);
   }
 
   return res;
+}
+
+const removeHotkey = (tree: SavedHotkeys, keys: KEYS[]): SavedHotkeys => {
+  if (keys.length === 0) return { ...tree };
+
+  const [currentKey, ...restKeys] = keys;
+  const childNode = tree[currentKey];
+
+  if (!childNode) return { ...tree };
+
+  if (restKeys.length === 0) {
+    const { icon, desc, ...rest } = childNode;
+    if (Object.keys(rest).length === 0) {
+      const { [currentKey]: _, ...newTree } = tree;
+      return newTree;
+    }
+
+    return {
+      ...tree,
+      [currentKey]: rest,
+    };
+  }
+
+  const updatedChildNode = removeHotkey(childNode as SavedHotkeys, restKeys);
+  if (Object.keys(updatedChildNode).length === 0) {
+    const { [currentKey]: _, ...newTree } = tree;
+    return newTree;
+  }
+
+  return {
+    ...tree,
+    [currentKey]: updatedChildNode,
+  };
 }
 
 const SpecifiedIcon: FC<{ selectedIcon: string | undefined }> = ({ selectedIcon }) => {
@@ -143,6 +176,14 @@ export default function Index() {
     left: 12,
     right: 12,
   };
+
+  // useEffect(() => {
+  //   console.log('DAKOTA-savedHotkeys', savedHotkeys);
+  // }, [savedHotkeys]);
+
+  // useEffect(() => {
+  //   console.log('DAKOTA-hotkeys', hotkeys);
+  // }, [hotkeys]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -201,10 +242,11 @@ export default function Index() {
 
   return (
     <FlashList
+      keyboardShouldPersistTaps='always'
       estimatedItemSize={100}
       numColumns={4}
       data={hotkeys}
-      renderItem={({ item }) => (
+      renderItem={({ item, index }) => (
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <Button
@@ -225,7 +267,12 @@ export default function Index() {
               <Text>Edit</Text>
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem inset>
+            <ContextMenuItem inset onPress={() => {
+              const newSavedKeys = removeHotkey(savedHotkeys, item.keys as KEYS[]);
+              AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
+              setSavedHotkeys(newSavedKeys);
+              setHotkeys((prevHotkeys) => [...prevHotkeys.slice(0, index), ...prevHotkeys.slice(index + 1)]);
+            }}>
               <Text>Delete</Text>
             </ContextMenuItem>
           </ContextMenuContent>

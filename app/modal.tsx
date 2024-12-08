@@ -9,7 +9,7 @@ import { IconFormContext } from "@/context/IconFormContext";
 
 export default function Modal() {
     const [search, setSearch] = useState<string>();
-  const {setSelectedIcon} = useContext(IconFormContext);
+    const { setSelectedIcon } = useContext(IconFormContext);
 
     const router = useRouter();
 
