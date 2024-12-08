@@ -10,14 +10,15 @@ import { KEYS } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
-import { Info, Plus, icons, } from "lucide-react-native";
-import { useState, useEffect, FC, useContext } from "react";
+import { AlertTriangle, CheckCheck, Info, Plus, icons, } from "lucide-react-native";
+import { useState, useEffect, FC, useContext, useRef, useCallback } from "react";
 import { View, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type HotkeyNode = {
   icon: string;
   desc: string;
+  isSynced: boolean;
 } & {
   [key in KEYS]?: SavedHotkeys;
 };
@@ -30,6 +31,7 @@ type HotkeyData = {
   keys: KEYS[];
   icon: string;
   desc: string;
+  isSynced: boolean;
 };
 
 const ALL_KEYS = ['F13', 'F14',
@@ -71,6 +73,7 @@ const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: st
         ...currentTree,
         icon,
         desc,
+        isSynced: false,
       };
     }
 
@@ -93,10 +96,10 @@ const convertStoredHotkeys = (savedHotkeys: SavedHotkeys) => {
   const res: HotkeyData[] = [];
 
   function recurse(obj: HotkeyNode, path: KEYS[]): void {
-    const { icon, desc } = obj;
+    const { icon, desc, isSynced } = obj;
 
     if (icon && desc) {
-      res.push({ keys: path, icon, desc });
+      res.push({ keys: path, icon, desc, isSynced });
     }
 
     for (const key in obj) {
@@ -124,7 +127,7 @@ const removeHotkey = (tree: SavedHotkeys, keys: KEYS[]): SavedHotkeys => {
   if (!childNode) return { ...tree };
 
   if (restKeys.length === 0) {
-    const { icon, desc, ...rest } = childNode;
+    const { icon, desc, isSynced, ...rest } = childNode;
     if (Object.keys(rest).length === 0) {
       const { [currentKey]: _, ...newTree } = tree;
       return newTree;
@@ -148,17 +151,48 @@ const removeHotkey = (tree: SavedHotkeys, keys: KEYS[]): SavedHotkeys => {
   };
 }
 
+const updateHotkey = (tree: SavedHotkeys | HotkeyNode, keys: KEYS[], updates: Partial<HotkeyNode>): SavedHotkeys | HotkeyNode => {
+  if (keys.length === 0) {
+    return {
+      ...tree,
+      ...updates
+    };
+  }
+
+  const [currentKey, ...restKeys] = keys;
+  const currentNode = tree[currentKey];
+
+  const subTree = (typeof currentNode === 'object' && currentNode !== null) ? currentNode : {};
+  const updatedNode = updateHotkey(subTree, restKeys, updates);
+
+  return {
+    ...tree,
+    [currentKey]: updatedNode
+  }
+}
+
+const createNewWebsocketServer = (ip: string, options: { onopen: WebSocket['onopen']; onmessage: WebSocket['onmessage']; onerror: WebSocket['onerror']; onclose: WebSocket['onclose']; }) => {
+  const ws = new WebSocket(`ws://${ip}`);
+
+  ws.onopen = options.onopen;
+  ws.onclose = options.onclose;
+  ws.onmessage = options.onmessage;
+  ws.onerror = options.onerror;
+
+  return ws;
+}
+
 const SpecifiedIcon: FC<{ selectedIcon: string | undefined }> = ({ selectedIcon }) => {
   if (!selectedIcon || !(selectedIcon in icons)) return null;
 
   const DialogIcon = icons[selectedIcon as unknown as keyof typeof icons];
 
-  return <DialogIcon color='white' />;
+  return <DialogIcon color='white' style={{ alignSelf: 'center' }} />;
 }
 
 export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [websocket, setWebsocket] = useState<WebSocket>();
+  const websocket = useRef<WebSocket>(null);
   const [ip, setIp] = useState('192.168.1.102:8686');
   const [serverMessage, setServerMessage] = useState("");
   const [savedHotkeys, setSavedHotkeys] = useState({});
@@ -177,13 +211,13 @@ export default function Index() {
     right: 12,
   };
 
-  // useEffect(() => {
-  //   console.log('DAKOTA-savedHotkeys', savedHotkeys);
-  // }, [savedHotkeys]);
+  useEffect(() => {
+    console.log('DAKOTA-savedHotkeys', savedHotkeys);
+  }, [savedHotkeys]);
 
-  // useEffect(() => {
-  //   console.log('DAKOTA-hotkeys', hotkeys);
-  // }, [hotkeys]);
+  useEffect(() => {
+    console.log('DAKOTA-hotkeys', hotkeys);
+  }, [hotkeys]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -196,7 +230,10 @@ export default function Index() {
     }
 
     fetchData().then((data) => {
-      if (isSubscribed) setHotkeys(convertStoredHotkeys(data));
+      if (isSubscribed) {
+        setSavedHotkeys(data);
+        setHotkeys(convertStoredHotkeys(data));
+      }
     })
       .catch((e) => setError('fetch'));
 
@@ -205,38 +242,43 @@ export default function Index() {
     }
   }, []);
 
+  const connectToServer = useCallback(() => {
+    const ws = createNewWebsocketServer(ip, {
+      onclose: (e) => {
+        console.log("WebSocket connection closed:", e.code, e.reason);
+        setIsConnected(false); // Update state if the connection closes
+        // @ts-ignore
+        websocket.current = null;
+      },
+      onerror: (e) => {
+        console.log("WebSocket error:", e);
+        setIsConnected(false); // Update state if there is an error
+        // @ts-ignore
+        websocket.current = null;
+      },
+      onmessage: (e: WebSocketMessageEvent) => {
+        console.log("Message from server:", e.data);
+        setServerMessage(e?.data); // Store the server message
+      },
+      onopen: () => {
+        console.log("WebSocket connection opened");
+        // to send message you can use like that :   ws.send("Hello, server!"); 
+        setIsConnected(true); // Update state to reflect successful connection
+        // @ts-ignore
+        websocket.current = ws;
+      },
+    });
+
+    return ws;
+  }, [ip]);
+
   useEffect(() => {
-    const ws = new WebSocket(`ws://${ip}`);
-
-    ws.onopen = () => {
-      console.log("WebSocket connection opened");
-      // to send message you can use like that :   ws.send("Hello, server!"); 
-      setIsConnected(true); // Update state to reflect successful connection
-      setWebsocket(ws);
-    };
-
-    ws.onmessage = (e) => {
-      console.log("Message from server:", e.data);
-      setServerMessage(e?.data); // Store the server message
-    };
-
-    ws.onerror = (e) => {
-      console.log("WebSocket error:", e);
-      setIsConnected(false); // Update state if there is an error
-      setWebsocket(undefined);
-    };
-
-    ws.onclose = (e) => {
-      console.log("WebSocket connection closed:", e.code, e.reason);
-      setIsConnected(false); // Update state if the connection closes
-      setWebsocket(undefined);
-    };
-
+    const ws = connectToServer();
     // Clean up WebSocket connection when the component unmounts
     return () => {
       ws.close();
     };
-  }, []);
+  }, [connectToServer]);
 
   const { width } = Dimensions.get('window');
 
@@ -252,13 +294,23 @@ export default function Index() {
             <Button
               variant='secondary'
               onPress={() => {
-                console.log('HIT');
-                websocket?.send('a');
+                websocket.current?.send(JSON.stringify({ keyCombo: item.keys.join('+'), isSync: !item.isSynced }));
+                if (!item.isSynced) {
+                  setHotkeys(prevHotkeys => [...prevHotkeys.slice(0, index), { ...item, isSynced: true }, ...prevHotkeys.slice(index + 1)]);
+                  setSavedHotkeys((prevSavedKeys) => {
+                    const newSavedKeys = updateHotkey(prevSavedKeys, item.keys, {isSynced: true});
+                    AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
+                    return newSavedKeys;
+                  });
+                }
               }}
-              style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: 'auto' }}
+              style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', alignContent: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: 'auto' }}
             >
-              <SpecifiedIcon selectedIcon={item.icon} />
-              <Label>{item.desc}</Label>
+              <View>
+                {item.isSynced ? null : <AlertTriangle color='yellow' size={10} style={{ position: 'absolute', pointerEvents: 'none', right: -18, top: -8 }} />}
+                <SpecifiedIcon selectedIcon={item.icon} />
+                <Label style={{ pointerEvents: 'none', textAlign: 'center' }}>{item.desc}</Label>
+              </View>
             </Button>
           </ContextMenuTrigger>
 
@@ -275,10 +327,15 @@ export default function Index() {
             }}>
               <Text>Delete</Text>
             </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem inset style={{ flexDirection: 'row' }} disabled>
+              {item.isSynced ? <CheckCheck color='green' /> : <AlertTriangle color='yellow' />}
+              <Text>{item.isSynced ? 'Hotkey synced!' : 'You\'ll need to resync this hotkey'}</Text>
+            </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
       )}
-      ListHeaderComponent={<ConnectionBanner connectedServer={isConnected ? ip : undefined} />}
+      ListHeaderComponent={<ConnectionBanner connectedServer={isConnected ? ip : undefined} onPress={connectToServer} />}
       ListFooterComponent={
         <Dialog open={open} onOpenChange={(isOpen) => {
           setOpen(isOpen);
@@ -340,7 +397,7 @@ export default function Index() {
                 const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, selectedIcon, desc);
                 AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
                 setSavedHotkeys(newSavedKeys);
-                setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc }]);
+                setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc, isSynced: false }]);
               }}>
                 <Button>
                   <Text>Save</Text>

@@ -8,10 +8,11 @@ import { Button } from './ui/button';
 export namespace ConnectionBanner {
     export interface Props {
         connectedServer: string | undefined;
+        onPress: () => void;
     }
 }
 
-export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedServer }) => {
+export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedServer, onPress }) => {
     const [open, setOpen] = React.useState(false);
 
     return (
@@ -32,7 +33,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedSe
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <DialogClose asChild>
+                    <DialogClose asChild onPress={onPress}>
                         <Button>
                             <Text>Save</Text>
                         </Button>
