@@ -30,4 +30,38 @@ export enum KEYS {
   F22 = 'F22',
   F23 = 'F23',
   F24 = 'F24',
-}
+};
+
+export type HotkeyNode = {
+  icon: string;
+  desc: string;
+  isSynced: boolean;
+  index: number;
+} & {
+  [key in KEYS]?: SavedHotkeys;
+};
+
+export type SavedHotkeys = {
+  [key in KEYS]?: HotkeyNode
+};
+
+export type HotkeyData = {
+  keys: KEYS[];
+  icon: string;
+  desc: string;
+  isSynced: boolean;
+  index: number;
+};
+
+export const ALL_KEYS = ['F13', 'F14',
+  'F15',
+  'F16',
+  'F17',
+  'F18',
+  'F19',
+  'F20',
+  'F21',
+  'F22',
+  'F23',
+  'F24',
+] as KEYS[];
