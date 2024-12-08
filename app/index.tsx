@@ -1,8 +1,10 @@
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Button } from "@/components/ui/button";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Text } from "@/components/ui/text";
 import { IconFormContext } from "@/context/IconFormContext";
 import { KEYS } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,7 +12,9 @@ import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
 import { Info, Plus, icons, } from "lucide-react-native";
 import { useState, useEffect, FC, useContext } from "react";
-import { Pressable, View, Text, Dimensions } from "react-native";
+import { View, Dimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 type HotkeyNode = {
   icon: string;
   desc: string;
@@ -132,20 +136,28 @@ export default function Index() {
 
   const { selectedIcon, setSelectedIcon } = useContext(IconFormContext);
 
+  const insets = useSafeAreaInsets();
+  const contentInsets = {
+    top: insets.top,
+    bottom: insets.bottom,
+    left: 12,
+    right: 12,
+  };
+
   useEffect(() => {
     let isSubscribed = true;
 
     const fetchData = async () => {
       const data = await AsyncStorage.getItem('hotkeys');
-      if(!data) return {};
+      if (!data) return {};
 
       return JSON.parse(data) as SavedHotkeys;
     }
 
     fetchData().then((data) => {
-      if(isSubscribed) setHotkeys(convertStoredHotkeys(data));
+      if (isSubscribed) setHotkeys(convertStoredHotkeys(data));
     })
-    .catch((e) => setError('fetch'));
+      .catch((e) => setError('fetch'));
 
     return () => {
       isSubscribed = false;
@@ -193,17 +205,31 @@ export default function Index() {
       numColumns={4}
       data={hotkeys}
       renderItem={({ item }) => (
-        <Button
-          variant='secondary'
-          onPress={() => {
-            console.log('HIT');
-            websocket?.send('a');
-          }}
-          style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: 'auto' }}
-        >
-          <SpecifiedIcon selectedIcon={item.icon} />
-          <Label>{item.desc}</Label>
-        </Button>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <Button
+              variant='secondary'
+              onPress={() => {
+                console.log('HIT');
+                websocket?.send('a');
+              }}
+              style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: 'auto' }}
+            >
+              <SpecifiedIcon selectedIcon={item.icon} />
+              <Label>{item.desc}</Label>
+            </Button>
+          </ContextMenuTrigger>
+
+          <ContextMenuContent align='start' insets={contentInsets} className='w-64 native:w-72'>
+            <ContextMenuItem inset>
+              <Text>Edit</Text>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem inset>
+              <Text>Delete</Text>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       )}
       ListHeaderComponent={<ConnectionBanner connectedServer={isConnected ? ip : undefined} />}
       ListFooterComponent={
