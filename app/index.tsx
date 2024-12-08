@@ -168,19 +168,21 @@ export default function Index() {
 
   return (
     <FlashList
+      estimatedItemSize={100}
       numColumns={4}
       data={hotkeys}
       renderItem={({ item }) => (
-        <Pressable
+        <Button
+          variant='secondary'
           onPress={() => {
             console.log('HIT');
             websocket?.send('a');
           }}
-          style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44' }}
+          style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: 'auto' }}
         >
           <SpecifiedIcon selectedIcon={item.icon} />
           <Label>{item.desc}</Label>
-        </Pressable>
+        </Button>
       )}
       ListHeaderComponent={<ConnectionBanner connectedServer={isConnected ? ip : undefined} />}
       ListFooterComponent={
