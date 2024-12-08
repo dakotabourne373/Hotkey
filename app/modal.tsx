@@ -1,12 +1,17 @@
 import { Input } from "@/components/ui/input";
 import { FlashList } from "@shopify/flash-list";
 import { icons } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import tags from '@/lib/icons/tags.json';
+import { useRouter } from "expo-router";
+import { IconFormContext } from "@/context/IconFormContext";
 
 export default function Modal() {
     const [search, setSearch] = useState<string>();
+  const {setSelectedIcon} = useContext(IconFormContext);
+
+    const router = useRouter();
 
     const filteredIcons = useMemo(() => {
         if (!search) return Object.values(icons);
@@ -34,7 +39,10 @@ export default function Modal() {
             data={filteredIcons}
             keyExtractor={(item) => item.displayName || 'unknown'}
             renderItem={({ item: Item }) => (
-                <Pressable style={{ padding: 16, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44' }}>
+                <Pressable onPress={() => {
+                    setSelectedIcon(Item.displayName);
+                    router.replace('../');
+                }} style={{ padding: 16, margin: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44' }}>
                     <Item color='white' />
                 </Pressable>
             )}

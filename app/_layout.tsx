@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { NAV_THEME } from '@/lib/constants';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { PortalHost } from '@rn-primitives/portal';
+import { IconFormContext } from '@/context/IconFormContext';
 
 const LIGHT_THEME: Theme = {
   dark: false,
@@ -66,6 +67,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { colorScheme, setColorScheme, isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
+  const [selectedIcon, setSelectedIcon] = React.useState<string>();
 
   React.useEffect(() => {
     (async () => {
@@ -98,16 +100,18 @@ export default function RootLayout() {
 
   return (
     <>
-      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-        <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
-        <Stack>
-          <Stack.Screen name='index' />
-          <Stack.Screen name='modal'options={{
-            presentation: 'modal'
-          }} />
-        </Stack>
-      </ThemeProvider>
-      <PortalHost />
+      <IconFormContext.Provider value={{ selectedIcon, setSelectedIcon }}>
+        <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+          <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+          <Stack>
+            <Stack.Screen name='index' />
+            <Stack.Screen name='modal' options={{
+              presentation: 'modal'
+            }} />
+          </Stack>
+        </ThemeProvider>
+        <PortalHost />
+      </IconFormContext.Provider>
     </>
   );
 }

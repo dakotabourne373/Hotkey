@@ -1,9 +1,12 @@
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { IconFormContext } from "@/context/IconFormContext";
 import { KEYS } from "@/lib/constants";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
-import { useState, useEffect } from "react";
+import { Plus, icons, } from "lucide-react-native";
+import { useState, useEffect, FC, useContext } from "react";
 import { Pressable, View, Text } from "react-native";
 
 type SavedHotkeys = {
@@ -72,12 +75,23 @@ const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: st
   return addRecursive(tree, keys);
 }
 
+const SpecifiedIcon: FC<{selectedIcon: string | undefined}> = ({selectedIcon}) => {
+  if(!selectedIcon) return null;
+
+  const DialogIcon = icons[selectedIcon as unknown as keyof typeof icons];
+
+  return <DialogIcon color='white' />;
+}
+
 export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [websocket, setWebsocket] = useState<WebSocket>();
   const [ip, setIp] = useState('192.168.1.102:8686');
   const [serverMessage, setServerMessage] = useState("");
   const [savedHotkeys, setSavedHotkeys] = useState({});
+  const [open, setOpen] = useState(false);
+
+  const {selectedIcon, setSelectedIcon} = useContext(IconFormContext);
 
   useEffect(() => {
     const ws = new WebSocket(`ws://${ip}`);
@@ -143,6 +157,39 @@ export default function Index() {
           <Text>Go to Icon Screen</Text>
         </Button>
       </Link>
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        !isOpen && setSelectedIcon(undefined);
+      }} style={{ width: '100%' }}>
+        <DialogTrigger>
+          <Button onPress={() => setOpen(true)}>
+            <Text>Add new Hotkey!</Text>
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add a new hotkey</DialogTitle>
+            <DialogDescription>
+              Select icon, customize your description, then sync the hotkey. That's it!
+            </DialogDescription>
+          </DialogHeader>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <Text style={{ color: 'white' }}>{selectedIcon ? 'Icon selected!' : 'Select an icon'}</Text>
+            {selectedIcon ? (<SpecifiedIcon selectedIcon={selectedIcon} />) : (<Link asChild href='/modal'>
+              <Button>
+                <Plus color='black' />
+              </Button>
+            </Link>)}
+          </View>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button>
+                <Text>Save</Text>
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </View>
   );
 }
