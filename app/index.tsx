@@ -14,11 +14,13 @@ import { AlertTriangle, CheckCheck, Info, Plus, icons, } from "lucide-react-nati
 import { useState, useEffect, FC, useContext, useRef, useCallback } from "react";
 import { View, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 
 type HotkeyNode = {
   icon: string;
   desc: string;
   isSynced: boolean;
+  index: number;
 } & {
   [key in KEYS]?: SavedHotkeys;
 };
@@ -32,6 +34,7 @@ type HotkeyData = {
   icon: string;
   desc: string;
   isSynced: boolean;
+  index: number;
 };
 
 const ALL_KEYS = ['F13', 'F14',
@@ -66,15 +69,14 @@ const generateUnusedHotkey = (tree: SavedHotkeys, maxDepth = 4): KEYS[] | null =
   return recurse(tree, maxDepth, []);
 }
 
-const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], icon: string, desc: string) => {
-  function addRecursive(currentTree: SavedHotkeys, remainingKeys: KEYS[]): SavedHotkeys {
+const mergeNewHotkey = (tree: SavedHotkeys, keys: KEYS[], parameters: Omit<HotkeyNode, 'isSynced'>) => {
+  function addRecursive(currentTree: SavedHotkeys, remainingKeys: KEYS[]): SavedHotkeys | HotkeyNode {
     if (remainingKeys.length === 0) {
       return {
         ...currentTree,
-        icon,
-        desc,
+        ...parameters,
         isSynced: false,
-      };
+      } as HotkeyNode;
     }
 
     const [currentKey, ...restKeys] = remainingKeys;
@@ -96,10 +98,10 @@ const convertStoredHotkeys = (savedHotkeys: SavedHotkeys) => {
   const res: HotkeyData[] = [];
 
   function recurse(obj: HotkeyNode, path: KEYS[]): void {
-    const { icon, desc, isSynced } = obj;
+    const { icon, desc, isSynced, index } = obj;
 
     if (icon && desc) {
-      res.push({ keys: path, icon, desc, isSynced });
+      res.push({ keys: path, icon, desc, isSynced, index });
     }
 
     for (const key in obj) {
@@ -156,7 +158,7 @@ const updateHotkey = (tree: SavedHotkeys | HotkeyNode, keys: KEYS[], updates: Pa
     return {
       ...tree,
       ...updates
-    };
+    } as HotkeyNode;
   }
 
   const [currentKey, ...restKeys] = keys;
@@ -232,7 +234,7 @@ export default function Index() {
     fetchData().then((data) => {
       if (isSubscribed) {
         setSavedHotkeys(data);
-        setHotkeys(convertStoredHotkeys(data));
+        setHotkeys(convertStoredHotkeys(data).sort((a, b) => b.index - a.index));
       }
     })
       .catch((e) => setError('fetch'));
@@ -290,21 +292,24 @@ export default function Index() {
       data={hotkeys}
       renderItem={({ item, index }) => (
         <ContextMenu>
-          <ContextMenuTrigger asChild>
+          <ContextMenuTrigger asChild onLongPress={() => {
+            impactAsync(ImpactFeedbackStyle.Heavy);
+          }}>
             <Button
               variant='secondary'
               onPress={() => {
+                impactAsync(ImpactFeedbackStyle.Medium);
                 websocket.current?.send(JSON.stringify({ keyCombo: item.keys.join('+'), isSync: !item.isSynced }));
                 if (!item.isSynced) {
                   setHotkeys(prevHotkeys => [...prevHotkeys.slice(0, index), { ...item, isSynced: true }, ...prevHotkeys.slice(index + 1)]);
                   setSavedHotkeys((prevSavedKeys) => {
-                    const newSavedKeys = updateHotkey(prevSavedKeys, item.keys, {isSynced: true});
+                    const newSavedKeys = updateHotkey(prevSavedKeys, item.keys, { isSynced: true });
                     AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
                     return newSavedKeys;
                   });
                 }
               }}
-              style={{ width: width / 5, padding: 8, margin: 4, borderRadius: 10, alignItems: 'center', alignContent: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: 'auto' }}
+              style={{ width: width / 4.5, margin: 4, borderRadius: 10, alignItems: 'center', alignContent: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: '100%', pointerEvents: 'box-only' }}
             >
               <View>
                 {item.isSynced ? null : <AlertTriangle color='yellow' size={10} style={{ position: 'absolute', pointerEvents: 'none', right: -18, top: -8 }} />}
@@ -315,7 +320,9 @@ export default function Index() {
           </ContextMenuTrigger>
 
           <ContextMenuContent align='start' insets={contentInsets} className='w-64 native:w-72'>
-            <ContextMenuItem inset>
+            <ContextMenuItem inset onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+            }}>
               <Text>Edit</Text>
             </ContextMenuItem>
             <ContextMenuSeparator />
@@ -324,6 +331,7 @@ export default function Index() {
               AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
               setSavedHotkeys(newSavedKeys);
               setHotkeys((prevHotkeys) => [...prevHotkeys.slice(0, index), ...prevHotkeys.slice(index + 1)]);
+              impactAsync(ImpactFeedbackStyle.Rigid);
             }}>
               <Text>Delete</Text>
             </ContextMenuItem>
@@ -340,7 +348,7 @@ export default function Index() {
         <Dialog open={open} onOpenChange={(isOpen) => {
           setOpen(isOpen);
           !isOpen && setSelectedIcon(undefined);
-        }} style={{ width: '100%' }}>
+        }} style={{ width: '100%', marginTop: 32 }}>
           <DialogTrigger>
             <Button onPress={() => setOpen(true)}>
               <Text>Add new Hotkey!</Text>
@@ -394,10 +402,10 @@ export default function Index() {
 
                 const newHotkey = generateUnusedHotkey(savedHotkeys);
                 if (!newHotkey) return; // TODO: show an error
-                const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, selectedIcon, desc);
+                const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, {icon: selectedIcon, desc, index: hotkeys.length});
                 AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
                 setSavedHotkeys(newSavedKeys);
-                setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc, isSynced: false }]);
+                setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc, isSynced: false, index: prevKeys.length }]);
               }}>
                 <Button>
                   <Text>Save</Text>
