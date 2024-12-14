@@ -10,7 +10,7 @@ import { HotkeyData, KEYS, SavedHotkeys } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
-import { AlertTriangle, CheckCheck, Info, Plus, icons, } from "lucide-react-native";
+import { AlertTriangle, CheckCheck, Info, Pencil, Plus, icons, } from "lucide-react-native";
 import { useState, useEffect, FC, useContext, useRef, useCallback } from "react";
 import { View, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,6 +44,8 @@ export default function Index() {
   const [savedHotkeys, setSavedHotkeys] = useState({});
   const [hotkeys, setHotkeys] = useState<HotkeyData[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editingData, setEditingData] = useState<HotkeyData>();
   const [desc, setDesc] = useState<string>();
   const [error, setError] = useState<'icon' | 'desc' | 'fetch'>();
 
@@ -56,14 +58,6 @@ export default function Index() {
     left: 12,
     right: 12,
   };
-
-  useEffect(() => {
-    console.log('DAKOTA-savedHotkeys', savedHotkeys);
-  }, [savedHotkeys]);
-
-  useEffect(() => {
-    console.log('DAKOTA-hotkeys', hotkeys);
-  }, [hotkeys]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -135,8 +129,8 @@ export default function Index() {
       numColumns={4}
       data={hotkeys}
       renderItem={({ item, index }) => (
-        <ContextMenu>
-          <ContextMenuTrigger asChild onLongPress={() => {
+        <ContextMenu style={{ flexGrow: 1, height: '100%' }}>
+          <ContextMenuTrigger style={{ height: '100%', backgroundColor: 'blue' }} asChild onLongPress={() => {
             impactAsync(ImpactFeedbackStyle.Heavy);
           }}>
             <Button
@@ -155,17 +149,20 @@ export default function Index() {
               }}
               style={{ width: width / 4.5, margin: 4, borderRadius: 10, alignItems: 'center', alignContent: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: '100%', pointerEvents: 'box-only' }}
             >
-              <View>
-                {item.isSynced ? null : <AlertTriangle color='yellow' size={10} style={{ position: 'absolute', pointerEvents: 'none', right: -18, top: -8 }} />}
-                <SpecifiedIcon selectedIcon={item.icon} />
-                <Label style={{ pointerEvents: 'none', textAlign: 'center' }}>{item.desc}</Label>
-              </View>
+              {item.isSynced ? null : <AlertTriangle color='yellow' size={10} style={{ position: 'absolute', right: -18, top: -8 }} />}
+              <SpecifiedIcon selectedIcon={item.icon} />
+              <Label style={{ pointerEvents: 'none', textAlign: 'center' }}>{item.desc}</Label>
             </Button>
           </ContextMenuTrigger>
 
           <ContextMenuContent align='start' insets={contentInsets} className='w-64 native:w-72'>
             <ContextMenuItem inset onPress={() => {
               impactAsync(ImpactFeedbackStyle.Light);
+              setSelectedIcon(item.icon);
+              setDesc(item.desc);
+              setEditingData({ ...item, index });
+              setEditing(true);
+              setOpen(true)
             }}>
               <Text>Edit</Text>
             </ContextMenuItem>
@@ -194,22 +191,32 @@ export default function Index() {
           !isOpen && setSelectedIcon(undefined);
         }} style={{ width: '100%', marginTop: 32 }}>
           <DialogTrigger>
-            <Button onPress={() => setOpen(true)}>
+            <Button onPress={() => { setOpen(true); setEditing(false) }}>
               <Text>Add new Hotkey!</Text>
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add a new hotkey</DialogTitle>
+              <DialogTitle>{editing ? 'Edit a hotkey' : 'Add a new hotkey'}</DialogTitle>
               <DialogDescription>
-                Select icon, customize your description, then sync the hotkey. That's it!
+                {editing ? "Edit icon or description, then save! That's it!" : "Select icon, customize your description, then sync the hotkey. That's it!"}
               </DialogDescription>
             </DialogHeader>
             <View style={{ gap: 16, marginVertical: 20 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Label nativeID="icon">{selectedIcon ? 'Icon selected!' : 'Select an icon'}</Label>
                 {selectedIcon ?
-                  (<SpecifiedIcon selectedIcon={selectedIcon} />) :
+                  (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <SpecifiedIcon selectedIcon={selectedIcon} />
+                      <>
+                        <Link asChild href='/modal' aria-labelledby="icon">
+                          <Button>
+                            <Pencil color='black' />
+                          </Button>
+                        </Link>
+                      </>
+                    </View>) :
                   (
                     <Link asChild href='/modal' aria-labelledby="icon">
                       <Button>
@@ -220,10 +227,11 @@ export default function Index() {
                 }
               </View>
               <View style={{ gap: 8 }}>
-                <Label nativeID="desc">Set a description</Label>
+                <Label nativeID="desc">{editing ? 'Edit the description' : 'Set a description'}</Label>
                 <Input
+                  defaultValue={editingData?.desc}
                   placeholder="Mute Mic"
-                  maxLength={40}
+                  maxLength={15}
                   aria-labelledby="desc"
                   onChangeText={setDesc}
                 />
@@ -243,13 +251,25 @@ export default function Index() {
                   setError('desc');
                   return;
                 }
+                if (editing && !editingData) return; // TO-DO: show an error
 
-                const newHotkey = generateUnusedHotkey(savedHotkeys);
-                if (!newHotkey) return; // TODO: show an error
-                const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, { icon: selectedIcon, desc, index: hotkeys.length });
-                AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
-                setSavedHotkeys(newSavedKeys);
-                setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc, isSynced: false, index: prevKeys.length }]);
+                if (editing && editingData) {
+                  setHotkeys(prevHotkeys => [...prevHotkeys.slice(0, editingData.index), { ...editingData, icon: selectedIcon, desc }, ...prevHotkeys.slice(editingData.index + 1)]);
+                  setSavedHotkeys((prevSavedKeys) => {
+                    const newSavedKeys = updateHotkey(prevSavedKeys, editingData.keys, { desc, icon: selectedIcon });
+                    AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
+                    return newSavedKeys;
+                  });
+                } else {
+                  const newHotkey = generateUnusedHotkey(savedHotkeys);
+                  if (!newHotkey) return; // TODO: show an error
+                  const newSavedKeys = mergeNewHotkey(savedHotkeys, newHotkey, { icon: selectedIcon, desc, index: hotkeys.length });
+                  AsyncStorage.setItem('hotkeys', JSON.stringify(newSavedKeys));
+                  setSavedHotkeys(newSavedKeys);
+                  setHotkeys((prevKeys) => [...prevKeys, { keys: newHotkey, icon: selectedIcon, desc, isSynced: false, index: prevKeys.length }]);
+                }
+                setEditing(false);
+                setEditingData(undefined);
               }}>
                 <Button>
                   <Text>Save</Text>
