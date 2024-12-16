@@ -18,7 +18,7 @@ import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { convertStoredHotkeys, updateHotkey, removeHotkey, generateUnusedHotkey, mergeNewHotkey } from "@/lib/hotkey-utils";
 
 const createNewWebsocketServer = (ip: string, options: { onopen: WebSocket['onopen']; onmessage: WebSocket['onmessage']; onerror: WebSocket['onerror']; onclose: WebSocket['onclose']; }) => {
-  const ws = new WebSocket(`ws://${ip}`);
+  const ws = new WebSocket(`ws://${ip}:8686`);
 
   ws.onopen = options.onopen;
   ws.onclose = options.onclose;
@@ -39,7 +39,7 @@ const SpecifiedIcon: FC<{ selectedIcon: string | undefined }> = ({ selectedIcon 
 export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const websocket = useRef<WebSocket>(null);
-  const [ip, setIp] = useState('192.168.1.102:8686');
+  const [ip, setIp] = useState('192.168.1.102');
   const [serverMessage, setServerMessage] = useState("");
   const [savedHotkeys, setSavedHotkeys] = useState({});
   const [hotkeys, setHotkeys] = useState<HotkeyData[]>([]);
@@ -82,8 +82,10 @@ export default function Index() {
     }
   }, []);
 
-  const connectToServer = useCallback(() => {
-    const ws = createNewWebsocketServer(ip, {
+  const connectToServer = useCallback((newIp: string) => {
+    setIp(newIp);
+    AsyncStorage.setItem('computer-ip', newIp);
+    const ws = createNewWebsocketServer(newIp, {
       onclose: (e) => {
         console.log("WebSocket connection closed:", e.code, e.reason);
         setIsConnected(false); // Update state if the connection closes
@@ -110,13 +112,18 @@ export default function Index() {
     });
 
     return ws;
-  }, [ip]);
+  }, []);
 
   useEffect(() => {
-    const ws = connectToServer();
+    let ws: WebSocket;
+    AsyncStorage.getItem('computer-ip')
+      .then((savedIp) => {
+        if (!savedIp) return;
+        ws = connectToServer(savedIp);
+      });
     // Clean up WebSocket connection when the component unmounts
     return () => {
-      ws.close();
+      ws?.close();
     };
   }, [connectToServer]);
 
@@ -184,7 +191,7 @@ export default function Index() {
           </ContextMenuContent>
         </ContextMenu>
       )}
-      ListHeaderComponent={<ConnectionBanner connectedServer={isConnected ? ip : undefined} onPress={connectToServer} />}
+      ListHeaderComponent={<ConnectionBanner connectedServer={ip} isConnected={isConnected} onPress={connectToServer} />}
       ListFooterComponent={
         <Dialog open={open} onOpenChange={(isOpen) => {
           setOpen(isOpen);
@@ -208,7 +215,9 @@ export default function Index() {
                 {selectedIcon ?
                   (
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <SpecifiedIcon selectedIcon={selectedIcon} />
+                      <View style={{ backgroundColor: '#3c3f44', borderRadius: 10, padding: 2, paddingHorizontal: 4, alignContent: 'center', justifyContent: 'center' }}>
+                        <SpecifiedIcon selectedIcon={selectedIcon} />
+                      </View>
                       <>
                         <Link asChild href='/modal' aria-labelledby="icon">
                           <Button>
