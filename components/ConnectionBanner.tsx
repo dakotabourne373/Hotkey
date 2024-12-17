@@ -9,6 +9,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Info } from 'lucide-react-native';
 import Animated, { FlipInXDown, FlipOutXDown } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export namespace ConnectionBanner {
     export interface Props {
@@ -18,7 +19,7 @@ export namespace ConnectionBanner {
     }
 }
 
-export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedServer, onPress }) => {
+export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedServer, isConnected, onPress }) => {
     const [open, setOpen] = React.useState(false);
     const [ipAddress, setIpAddress] = React.useState<string>();
     const [error, setError] = React.useState(false);
@@ -31,6 +32,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedSe
             setError(true);
             return;
         }
+        AsyncStorage.setItem('computer-ip', ipAddress);
         onPress(ipAddress);
     }
 
@@ -45,9 +47,9 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({ connectedSe
     return (
         <Dialog open={open} onOpenChange={setOpen} style={{ width: '100%' }}>
             <DialogTrigger>
-                <LinearGradient colors={connectedServer ? ['#42f5c8', '#42cbf5'] : ['#f54251', '#f542e3']}>
+                <LinearGradient colors={isConnected ? ['#42f5c8', '#42cbf5'] : ['#f54251', '#f542e3']}>
                     <Pressable style={{ flexDirection: 'row', gap: 8, padding: 16, alignItems: 'center', justifyContent: 'center' }} onPress={() => setOpen(true)}>
-                        <Text>{connectedServer ? `connected to ${connectedServer}:8686` : 'not connected'}</Text>
+                        <Text>{isConnected ? `connected to ${connectedServer}:8686` : 'not connected'}</Text>
                         <Settings color='black' />
                     </Pressable>
                 </LinearGradient>

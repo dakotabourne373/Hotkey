@@ -7,7 +7,8 @@ export const generateUnusedHotkey = (tree: SavedHotkeys, maxDepth = 4): KEYS[] |
 
         for (const key of ALL_KEYS) {
             if (prefix.includes(key)) continue;
-            if (!(key in currentTree)) return [...prefix, key];
+            const childNode = currentTree[key];
+            if (!childNode || (!('icon' in childNode) && !('desc' in childNode))) return [...prefix, key];
 
             const nextLevel = currentTree[key] as SavedHotkeys;
             const result = recurse(nextLevel, depth - 1, [...prefix, key]);
@@ -78,9 +79,8 @@ export const removeHotkey = (tree: SavedHotkeys, keys: KEYS[]): SavedHotkeys => 
     const childNode = tree[currentKey];
 
     if (!childNode) return { ...tree };
-
     if (restKeys.length === 0) {
-        const { icon, desc, isSynced, ...rest } = childNode;
+        const { icon, desc, isSynced, index, ...rest } = childNode;
         if (Object.keys(rest).length === 0) {
             const { [currentKey]: _, ...newTree } = tree;
             return newTree;

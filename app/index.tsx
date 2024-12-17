@@ -12,7 +12,7 @@ import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
 import { AlertTriangle, CheckCheck, Info, Pencil, Plus, icons, } from "lucide-react-native";
 import { useState, useEffect, FC, useContext, useRef, useCallback } from "react";
-import { View, Dimensions } from "react-native";
+import { View, Dimensions, AppState } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { convertStoredHotkeys, updateHotkey, removeHotkey, generateUnusedHotkey, mergeNewHotkey } from "@/lib/hotkey-utils";
@@ -39,7 +39,7 @@ const SpecifiedIcon: FC<{ selectedIcon: string | undefined }> = ({ selectedIcon 
 export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const websocket = useRef<WebSocket>(null);
-  const [ip, setIp] = useState('192.168.1.102');
+  const [ip, setIp] = useState<string>();
   const [serverMessage, setServerMessage] = useState("");
   const [savedHotkeys, setSavedHotkeys] = useState({});
   const [hotkeys, setHotkeys] = useState<HotkeyData[]>([]);
@@ -84,7 +84,6 @@ export default function Index() {
 
   const connectToServer = useCallback((newIp: string) => {
     setIp(newIp);
-    AsyncStorage.setItem('computer-ip', newIp);
     const ws = createNewWebsocketServer(newIp, {
       onclose: (e) => {
         console.log("WebSocket connection closed:", e.code, e.reason);
@@ -127,6 +126,18 @@ export default function Index() {
     };
   }, [connectToServer]);
 
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) => {
+      if(state === 'active' && !isConnected && ip) {
+        connectToServer(ip);
+      }
+    });
+
+    return () => {
+      listener.remove();
+    }
+  }, [isConnected, ip, connectToServer]);
+
   const { width } = Dimensions.get('window');
 
   return (
@@ -156,7 +167,7 @@ export default function Index() {
               }}
               style={{ width: width / 4.5, margin: 4, borderRadius: 10, alignItems: 'center', alignContent: 'center', justifyContent: 'space-around', backgroundColor: '#3c3f44', height: '100%', pointerEvents: 'box-only' }}
             >
-              {item.isSynced ? null : <AlertTriangle color='yellow' size={10} style={{ position: 'absolute', right: -18, top: -8 }} />}
+              {item.isSynced ? null : <AlertTriangle color='yellow' size={10} style={{ position: 'absolute', right: 2, top: 2 }} />}
               <SpecifiedIcon selectedIcon={item.icon} />
               <Label style={{ pointerEvents: 'none', textAlign: 'center' }}>{item.desc}</Label>
             </Button>
