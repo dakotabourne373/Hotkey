@@ -1,65 +1,65 @@
-import '@/global.css';
+import "@/global.css";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Theme, ThemeProvider } from '@react-navigation/native';
-import { SplashScreen, Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as React from 'react';
-import { Platform } from 'react-native';
-import { NAV_THEME } from '@/lib/constants';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { PortalHost } from '@rn-primitives/portal';
-import { IconFormContext } from '@/context/IconFormContext';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Theme, ThemeProvider } from "@react-navigation/native";
+import { SplashScreen, Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import * as React from "react";
+import { Platform } from "react-native";
+import { NAV_THEME } from "@/lib/constants";
+import { useColorScheme } from "@/lib/useColorScheme";
+import { PortalHost } from "@rn-primitives/portal";
+import { IconFormContext } from "@/context/IconFormContext";
 
 const LIGHT_THEME: Theme = {
   dark: false,
   colors: NAV_THEME.light,
   fonts: {
     regular: {
-      fontFamily: 'Bogle',
-      fontWeight: '400'
+      fontFamily: "Bogle",
+      fontWeight: "400",
     },
     medium: {
-      fontFamily: 'Bogle',
-      fontWeight: '600'
+      fontFamily: "Bogle",
+      fontWeight: "600",
     },
     bold: {
-      fontFamily: 'Bogle',
-      fontWeight: '800'
+      fontFamily: "Bogle",
+      fontWeight: "800",
     },
     heavy: {
-      fontFamily: 'Bogle',
-      fontWeight: '900'
-    }
-  }
+      fontFamily: "Bogle",
+      fontWeight: "900",
+    },
+  },
 };
 const DARK_THEME: Theme = {
   dark: true,
   colors: NAV_THEME.dark,
   fonts: {
     regular: {
-      fontFamily: 'Bogle',
-      fontWeight: '400'
+      fontFamily: "Bogle",
+      fontWeight: "400",
     },
     medium: {
-      fontFamily: 'Bogle',
-      fontWeight: '600'
+      fontFamily: "Bogle",
+      fontWeight: "600",
     },
     bold: {
-      fontFamily: 'Bogle',
-      fontWeight: '800'
+      fontFamily: "Bogle",
+      fontWeight: "800",
     },
     heavy: {
-      fontFamily: 'Bogle',
-      fontWeight: '900'
-    }
-  }
+      fontFamily: "Bogle",
+      fontWeight: "900",
+    },
+  },
 };
 
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
-} from 'expo-router';
+} from "expo-router";
 
 // Prevent the splash screen from auto-hiding before getting the color scheme.
 SplashScreen.preventAutoHideAsync();
@@ -71,17 +71,17 @@ export default function RootLayout() {
 
   React.useEffect(() => {
     (async () => {
-      const theme = await AsyncStorage.getItem('theme');
-      if (Platform.OS === 'web') {
+      const theme = await AsyncStorage.getItem("theme");
+      if (Platform.OS === "web") {
         // Adds the background color to the html element to prevent white background on overscroll.
-        document.documentElement.classList.add('bg-background');
+        document.documentElement.classList.add("bg-background");
       }
       if (!theme) {
-        AsyncStorage.setItem('theme', colorScheme);
+        AsyncStorage.setItem("theme", colorScheme);
         setIsColorSchemeLoaded(true);
         return;
       }
-      const colorTheme = theme === 'dark' ? 'dark' : 'light';
+      const colorTheme = theme === "dark" ? "dark" : "light";
       if (colorTheme !== colorScheme) {
         setColorScheme(colorTheme);
 
@@ -92,6 +92,7 @@ export default function RootLayout() {
     })().finally(() => {
       SplashScreen.hideAsync();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!isColorSchemeLoaded) {
@@ -102,12 +103,15 @@ export default function RootLayout() {
     <>
       <IconFormContext.Provider value={{ selectedIcon, setSelectedIcon }}>
         <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-          <StatusBar style={isDarkColorScheme ? 'light' : 'dark'} />
+          <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
           <Stack>
-            <Stack.Screen name='index' />
-            <Stack.Screen name='modal' options={{
-              presentation: 'modal'
-            }} />
+            <Stack.Screen name="index" />
+            <Stack.Screen
+              name="modal"
+              options={{
+                presentation: "modal",
+              }}
+            />
           </Stack>
         </ThemeProvider>
         <PortalHost />
