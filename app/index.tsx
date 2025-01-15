@@ -49,6 +49,7 @@ import {
 } from "@/lib/hotkey-utils";
 import { SpecifiedIcon } from "@/components/SpecifiedIcon";
 import { SortableHotkeyList } from "@/components/SortableHotkeyList";
+import React from "react";
 
 const createNewWebsocketServer = (
   ip: string,

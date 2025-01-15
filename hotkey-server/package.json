@@ -1,0 +1,23 @@
+{
+  "name": "hotkey-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-windows": "pkg . --targets node16-win-x64 --output dist/server.exe"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.2",
+    "ws": "^8.18.0"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "scripts": "index.js",
+    "assets": [
+      "node_modules/**/*"
+    ]
+  }
+}
