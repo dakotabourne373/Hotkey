@@ -1,0 +1,27 @@
+name: Build and Publish Hotkey Server
+
+on:
+  push:
+    paths:
+      - 'hotkey-server/**'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node environment
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm config set disturl https://npm.taobao.org/dist/
+          npm install --production
+      - name: Build server executable
+        run: npm run build-windows
+      - name: Create release with binary asset
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          RELEASE_NAME: 'hotkey-server-v$(npm run version)'
+        with:
+          assets: |
+            dist/server.exe
