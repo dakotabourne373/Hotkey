@@ -15,7 +15,9 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install --production
       - name: Build server executable
-        run: npm run build-windows
+        run: |
+          cd hotkey-server
+          npm run build-windows
       - name: Create release with binary asset
         uses: softprops/action-gh-release@v2
         env:
