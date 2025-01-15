@@ -24,7 +24,6 @@ jobs:
       - name: Handle versioning
         run: |
           git add .
-          git commit -m "[NO-BUILD] Bump version to $TAG"
           git tag "$TAG"
           git push origin main --set-upstream
           git push --tags

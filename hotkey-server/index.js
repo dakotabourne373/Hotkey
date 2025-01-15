@@ -55,7 +55,7 @@ wss.on("connection", (ws) => {
       combo.reverse().forEach(async (key) => await keyboard.releaseKey(key));
     } else await keyboard.releaseKey(combo[combo.length - 1]);
 
-    // Echoing the message back to the client.
+    // Echoing the message back to the client
     ws.send(`Server received: ${message}`);
   });
 
