@@ -15,7 +15,7 @@ jobs:
         run: |
           git config --global user.email "dakota.bourne0210@gmail.com"
           git config --global user.name "Git Actions"
-
+          echo "TAG=$(npm version patch)" >> $GITHUB_ENV
       - name: Setup node environment
         run: |
           cd hotkey-server
@@ -24,7 +24,6 @@ jobs:
       - name: Handle versioning
         run: |
           cd hotkey-server
-          echo "TAG=$(npm version patch)" >> $GITHUB_ENV
           git add . && git commit -m "[NO-BUILD] Bump version to $TAG" && git tag "$TAG" && git push origin main --tags
       - name: Build server executable
         run: |

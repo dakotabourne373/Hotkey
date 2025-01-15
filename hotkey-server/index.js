@@ -39,7 +39,7 @@ const mapKeys = (arr) => arr.map((key) => keymapper[key]);
 wss.on("connection", (ws) => {
   console.log("New client connected");
 
-  // Sending a message to the client
+  // Sending a message to the client.
   ws.send("Welcome to the WebSocket server!");
 
   // Listening for messages from the client.
