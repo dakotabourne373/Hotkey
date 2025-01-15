@@ -35,6 +35,7 @@ const keymapper = {
 
 const mapKeys = (arr) => arr.map((key) => keymapper[key]);
 
+// create websocket
 wss.on("connection", (ws) => {
   console.log("New client connected");
 
