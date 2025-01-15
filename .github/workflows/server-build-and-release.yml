@@ -11,6 +11,11 @@ jobs:
     if: ${{ !contains(github.event.head_commit.message, '[NO-BUILD]') }}
     steps:
       - uses: actions/checkout@v2
+      - name: Configure git user
+        run: |
+          git config --global user.email "dakota.bourne0210@gmail.com"
+          git config --global user.name "Git Actions"
+
       - name: Setup node environment
         run: |
           cd hotkey-server
