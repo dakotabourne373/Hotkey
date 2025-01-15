@@ -24,9 +24,7 @@ jobs:
       - name: Handle versioning
         run: |
           git add .
-          git tag "$TAG"
-          git push origin main --set-upstream
-          git push --tags
+          git push origin main --tags
       - name: Build server executable
         run: |
           cd hotkey-server
