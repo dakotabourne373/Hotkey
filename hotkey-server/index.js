@@ -65,5 +65,5 @@ wss.on("connection", (ws) => {
   });
 });
 
-// tell user what local ip the computer is on to be used in the app.
+// tell user what local ip the computer is on to be used in the app
 console.log(`WebSocket server is running on ws://${localIp}:8686`);

@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[NO-BUILD]') }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup node environment
@@ -18,7 +19,7 @@ jobs:
       - name: Handle versioning
         run: |
           cd hotkey-server
-          npm version patch && git add . && git commit -m "Bump version to $(npm version)" && git tag "$(npm version)"
+          npm version patch && git add . && git commit -m "[NO-BUILD] Bump version to $(npm version)" && git tag "$(npm version)" && git push origin main --tags
       - name: Build server executable
         run: |
           cd hotkey-server
@@ -29,4 +30,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NAME: 'hotkey-server-v$(npm version)'
         with:
-          files: dist/server.exe
+          files: hotkey-server/dist/server.exe
