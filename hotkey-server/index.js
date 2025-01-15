@@ -42,7 +42,7 @@ wss.on("connection", (ws) => {
   // Sending a message to the client
   ws.send("Welcome to the WebSocket server!");
 
-  // Listening for messages from the client
+  // Listening for messages from the client.
   ws.on("message", async (message) => {
     console.log(
       `Received message: ${JSON.stringify(message.toString(), null, 2)}`,

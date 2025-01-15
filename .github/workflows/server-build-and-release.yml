@@ -24,7 +24,8 @@ jobs:
       - name: Handle versioning
         run: |
           cd hotkey-server
-          npm version patch && git add . && git commit -m "[NO-BUILD] Bump version to $(npm version)" && git tag "$(npm version)" && git push origin main --tags
+          echo "TAG=$(npm version patch)" >> $GITHUB_ENV
+          git add . && git commit -m "[NO-BUILD] Bump version to $TAG" && git tag "$TAG" && git push origin main --tags
       - name: Build server executable
         run: |
           cd hotkey-server
@@ -33,6 +34,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_NAME: 'hotkey-server-v$(npm version)'
+          RELEASE_NAME: 'hotkey-server-v$TAG'
         with:
           files: hotkey-server/dist/server.exe
