@@ -24,7 +24,7 @@ jobs:
       - name: Handle versioning
         run: |
           cd hotkey-server
-          git add . && git commit -m "[NO-BUILD] Bump version to $TAG" && git tag "$TAG" && git push --tags
+          git add . && git commit -m "[NO-BUILD] Bump version to $TAG" && git tag "$TAG" && git push && git push --tags
       - name: Build server executable
         run: |
           cd hotkey-server
