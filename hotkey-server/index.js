@@ -2,7 +2,7 @@ const WebSocket = require("ws");
 const { keyboard } = require("@nut-tree-fork/nut-js");
 const { networkInterfaces } = require("os");
 
-// grabbing local ip
+// grabbing local ip for fun!
 const interfaces = networkInterfaces();
 let localIp = "localhost";
 
