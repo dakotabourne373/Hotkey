@@ -15,6 +15,10 @@ jobs:
           cd hotkey-server
           npm config set registry https://registry.npmjs.org/
           npm install --production
+      - name: Handle versioning
+        run: |
+          cd hotkey-server
+          npm version patch && git add . && git commit -m "Bump version to $(npm version)" && git tag "$(npm version)"
       - name: Build server executable
         run: |
           cd hotkey-server
@@ -22,8 +26,7 @@ jobs:
       - name: Create release with binary asset
         uses: softprops/action-gh-release@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          RELEASE_NAME: 'hotkey-server-v$(npm run version)'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NAME: 'hotkey-server-v$(npm version)'
         with:
-          assets: |
-            dist/server.exe
+          files: dist/server.exe
