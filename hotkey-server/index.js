@@ -17,6 +17,7 @@ for (const name of Object.keys(interfaces)) {
 
 const wss = new WebSocket.Server({ port: 8686 });
 
+// list of valid keys
 const keymapper = {
   F13: 13,
   F14: 14,
