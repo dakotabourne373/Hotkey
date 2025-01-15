@@ -13,7 +13,6 @@ jobs:
       - name: Setup node environment
         run: |
           npm config set registry https://registry.npmjs.org/
-          npm config set disturl https://npm.taobao.org/dist/
           npm install --production
       - name: Build server executable
         run: npm run build-windows
