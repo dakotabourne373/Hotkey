@@ -117,6 +117,7 @@ export default function RootLayout() {
                 name="modal"
                 options={{
                   presentation: "modal",
+                  title: 'Choose Icon for New Hotkey',
                 }}
               />
             </Stack>

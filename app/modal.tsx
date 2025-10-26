@@ -34,10 +34,9 @@ export default function Modal() {
 
   return (
     <FlashList
-      style={{ alignItems: "center" }}
-      estimatedItemSize={63}
+      contentContainerStyle={{alignContent: "center", paddingHorizontal: 16}}
       ListHeaderComponent={
-        <View style={{ margin: 16 }}>
+        <View style={{ paddingVertical: 16 }}>
           <Input
             placeholder="Try searching for an icon!"
             onChangeText={setSearch}
