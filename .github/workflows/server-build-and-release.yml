@@ -23,7 +23,7 @@ jobs:
           npm install --production
       - name: Handle versioning
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           git add .
           git push origin main --tags
@@ -34,7 +34,7 @@ jobs:
       - name: Create release with binary asset
         uses: softprops/action-gh-release@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           RELEASE_NAME: 'hotkey-server-v$TAG'
         with:
           files: hotkey-server/dist/server.exe

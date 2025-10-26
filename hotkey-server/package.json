@@ -10,7 +10,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@nut-tree-fork/nut-js": "^4.2.2",
     "pkg": "^5.8.1",
     "ws": "^8.18.0"
   },
