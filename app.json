@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.dakotabourne373.Hotkey"
     },
     "android": {
+      "package": "com.dakotabourne373.Hotkey",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

@@ -108,3 +108,6 @@ foreach ($key in $keys) {
 
 // tell user what local ip the computer is on to be used in the app.
 console.log(`WebSocket server is running on ws://${localIp}:8686`);
+console.log(
+  `In the mobile application, type the following into the input box: ${localIp}`,
+);
