@@ -10,6 +10,7 @@ import { NAV_THEME } from "@/lib/constants";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { PortalHost } from "@rn-primitives/portal";
 import { IconFormContext } from "@/context/IconFormContext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const LIGHT_THEME: Theme = {
   dark: false,
@@ -101,21 +102,29 @@ export default function RootLayout() {
 
   return (
     <>
-      <IconFormContext.Provider value={{ selectedIcon, setSelectedIcon }}>
-        <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-          <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-          <Stack>
-            <Stack.Screen name="index" />
-            <Stack.Screen
-              name="modal"
-              options={{
-                presentation: "modal",
-              }}
-            />
-          </Stack>
-        </ThemeProvider>
-        <PortalHost />
-      </IconFormContext.Provider>
+      <GestureHandlerRootView>
+        <IconFormContext.Provider value={{ selectedIcon, setSelectedIcon }}>
+          <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+            <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
+            <Stack>
+              <Stack.Screen
+                name="index"
+                options={{
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="modal"
+                options={{
+                  presentation: "modal",
+                  title: 'Choose Icon for New Hotkey',
+                }}
+              />
+            </Stack>
+          </ThemeProvider>
+          <PortalHost />
+        </IconFormContext.Provider>
+      </GestureHandlerRootView>
     </>
   );
 }

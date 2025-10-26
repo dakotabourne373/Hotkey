@@ -1,8 +1,6 @@
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Button } from "@/components/ui/button";
 import {
-  ContextMenu,
-  ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
@@ -23,7 +21,6 @@ import { Text } from "@/components/ui/text";
 import { IconFormContext } from "@/context/IconFormContext";
 import { HotkeyData, KEYS, SavedHotkeys } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FlashList } from "@shopify/flash-list";
 import { Link } from "expo-router";
 import {
   AlertTriangle,
@@ -48,8 +45,8 @@ import {
   mergeNewHotkey,
 } from "@/lib/hotkey-utils";
 import { SpecifiedIcon } from "@/components/SpecifiedIcon";
-import { SortableHotkeyList } from "@/components/SortableHotkeyList";
-import React from "react";
+import { HotkeyGrid } from "@/components/HotkeyGrid";
+import React, { useMemo } from "react";
 
 const createNewWebsocketServer = (
   ip: string,
@@ -87,12 +84,15 @@ export default function Index() {
   const { selectedIcon, setSelectedIcon } = useContext(IconFormContext);
 
   const insets = useSafeAreaInsets();
-  const contentInsets = {
-    top: insets.top,
-    bottom: insets.bottom,
-    left: 12,
-    right: 12,
-  };
+  const contentInsets = useMemo(
+    () => ({
+      top: insets.top,
+      bottom: insets.bottom,
+      left: 12,
+      right: 12,
+    }),
+    [insets.top, insets.bottom],
+  );
 
   useEffect(() => {
     let isSubscribed = true;
@@ -167,6 +167,10 @@ export default function Index() {
     const listener = AppState.addEventListener("change", (state) => {
       if (state === "active" && !isConnected && ip) {
         connectToServer(ip);
+      } else if (state === "inactive" || state === "background") {
+        // Close the WebSocket connection when the app is inactive
+        websocket.current?.close();
+        setIsConnected(false);
       }
     });
 
@@ -191,173 +195,145 @@ export default function Index() {
     AsyncStorage.setItem("hotkeys", JSON.stringify(copySavedHotkeys));
   };
 
-  if (isSorting) {
-    return (
-      <SortableHotkeyList
-        onFinishSorting={handleFinishedSorting}
-        data={hotkeys}
-        connectionBannerProps={{
-          connectedServer: ip,
-          isConnected: isConnected,
-          onPress: connectToServer,
-        }}
-      />
+  const handlePressHotkey = useCallback((item: HotkeyData, index: number) => {
+    websocket.current?.send(
+      JSON.stringify({
+        keyCombo: item.keys.join("+"),
+        isSync: !item.isSynced,
+      }),
     );
-  }
+
+    if (!item.isSynced) {
+      setHotkeys((prevHotkeys) => [
+        ...prevHotkeys.slice(0, index),
+        { ...item, isSynced: true },
+        ...prevHotkeys.slice(index + 1),
+      ]);
+
+      setSavedHotkeys((prevSavedKeys) => {
+        const newSavedKeys = updateHotkey(prevSavedKeys, item.keys, {
+          isSynced: true,
+        });
+        AsyncStorage.setItem("hotkeys", JSON.stringify(newSavedKeys));
+        return newSavedKeys;
+      });
+    }
+  }, []);
+
+  const renderContextMenu = useCallback(
+    (item: HotkeyData, index: number) => {
+      return (
+        <ContextMenuContent
+          align="start"
+          insets={contentInsets}
+          className="w-64 native:w-72">
+          <ContextMenuItem
+            inset
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+              setSelectedIcon(item.icon);
+              setDesc(item.desc);
+              setEditingData({ ...item, index });
+              setEditing(true);
+              setOpen(true);
+            }}>
+            <Text>Edit</Text>
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            inset
+            onPress={() => {
+              const newSavedKeys = removeHotkey(
+                savedHotkeys,
+                item.keys as KEYS[],
+              );
+              AsyncStorage.setItem("hotkeys", JSON.stringify(newSavedKeys));
+              setSavedHotkeys(newSavedKeys);
+              setHotkeys((prevHotkeys) => [
+                ...prevHotkeys.slice(0, index),
+                ...prevHotkeys.slice(index + 1),
+              ]);
+              impactAsync(ImpactFeedbackStyle.Rigid);
+            }}>
+            <Text>Delete</Text>
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem inset style={{ flexDirection: "row" }} disabled>
+            {item.isSynced ? (
+              <CheckCheck color="green" />
+            ) : (
+              <AlertTriangle color="yellow" />
+            )}
+            <Text>
+              {item.isSynced
+                ? "Hotkey synced!"
+                : "You'll need to resync this hotkey"}
+            </Text>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      );
+    },
+    [contentInsets, savedHotkeys, setSelectedIcon],
+  );
+
+  const headerComponent = (
+    <>
+      <ConnectionBanner
+        connectedServer={ip}
+        isConnected={isConnected}
+        onPress={connectToServer}
+      />
+      {/* <View
+        style={{
+          flexDirection: "row-reverse",
+          justifyContent: "space-between",
+          padding: 16,
+        }}>
+        <Button
+          style={{
+            borderRadius: 10,
+            padding: 2,
+            paddingHorizontal: 4,
+            alignContent: "center",
+            justifyContent: "center",
+          }}
+          onPress={() => {
+            impactAsync(ImpactFeedbackStyle.Heavy);
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut,
+            );
+            setIsSorting(!isSorting);
+          }}>
+          <SquareStack color="black" />
+        </Button>
+      </View> */}
+    </>
+  );
+
+  const footerComponent = isSorting ? (
+    <Button
+      style={{ marginHorizontal: 16, marginTop: 16, marginBottom: -16 }}
+      onPress={() => {
+        impactAsync(ImpactFeedbackStyle.Heavy);
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        handleFinishedSorting(hotkeys);
+      }}>
+      <Text>Finish Editing Order</Text>
+    </Button>
+  ) : null;
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <FlashList
-        keyboardShouldPersistTaps="always"
-        estimatedItemSize={100}
-        numColumns={4}
+      <HotkeyGrid
         data={hotkeys}
-        renderItem={({ item, index }) => (
-          <ContextMenu style={{ flexGrow: 1, height: "100%" }}>
-            <ContextMenuTrigger
-              asChild
-              onLongPress={() => {
-                impactAsync(ImpactFeedbackStyle.Heavy);
-              }}>
-              <Button
-                variant="secondary"
-                onPress={() => {
-                  impactAsync(ImpactFeedbackStyle.Medium);
-                  websocket.current?.send(
-                    JSON.stringify({
-                      keyCombo: item.keys.join("+"),
-                      isSync: !item.isSynced,
-                    }),
-                  );
-                  if (!item.isSynced) {
-                    setHotkeys((prevHotkeys) => [
-                      ...prevHotkeys.slice(0, index),
-                      { ...item, isSynced: true },
-                      ...prevHotkeys.slice(index + 1),
-                    ]);
-                    setSavedHotkeys((prevSavedKeys) => {
-                      const newSavedKeys = updateHotkey(
-                        prevSavedKeys,
-                        item.keys,
-                        { isSynced: true },
-                      );
-                      AsyncStorage.setItem(
-                        "hotkeys",
-                        JSON.stringify(newSavedKeys),
-                      );
-                      return newSavedKeys;
-                    });
-                  }
-                }}
-                style={{
-                  flex: 1 / 4,
-                  margin: 4,
-                  borderRadius: 10,
-                  alignItems: "center",
-                  alignContent: "center",
-                  justifyContent: "space-around",
-                  backgroundColor: "#3c3f44",
-                  height: "100%",
-                  pointerEvents: "box-only",
-                }}>
-                {item.isSynced ? null : (
-                  <AlertTriangle
-                    color="yellow"
-                    size={10}
-                    style={{ position: "absolute", right: 2, top: 2 }}
-                  />
-                )}
-                <SpecifiedIcon selectedIcon={item.icon} />
-                <Label style={{ pointerEvents: "none", textAlign: "center" }}>
-                  {item.desc}
-                </Label>
-              </Button>
-            </ContextMenuTrigger>
-
-            <ContextMenuContent
-              align="start"
-              insets={contentInsets}
-              className="w-64 native:w-72">
-              <ContextMenuItem
-                inset
-                onPress={() => {
-                  impactAsync(ImpactFeedbackStyle.Light);
-                  setSelectedIcon(item.icon);
-                  setDesc(item.desc);
-                  setEditingData({ ...item, index });
-                  setEditing(true);
-                  setOpen(true);
-                }}>
-                <Text>Edit</Text>
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                inset
-                onPress={() => {
-                  const newSavedKeys = removeHotkey(
-                    savedHotkeys,
-                    item.keys as KEYS[],
-                  );
-                  AsyncStorage.setItem("hotkeys", JSON.stringify(newSavedKeys));
-                  setSavedHotkeys(newSavedKeys);
-                  setHotkeys((prevHotkeys) => [
-                    ...prevHotkeys.slice(0, index),
-                    ...prevHotkeys.slice(index + 1),
-                  ]);
-                  impactAsync(ImpactFeedbackStyle.Rigid);
-                }}>
-                <Text>Delete</Text>
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem inset style={{ flexDirection: "row" }} disabled>
-                {item.isSynced ? (
-                  <CheckCheck color="green" />
-                ) : (
-                  <AlertTriangle color="yellow" />
-                )}
-                <Text>
-                  {item.isSynced
-                    ? "Hotkey synced!"
-                    : "You'll need to resync this hotkey"}
-                </Text>
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        )}
-        ListHeaderComponent={
-          <>
-            <ConnectionBanner
-              connectedServer={ip}
-              isConnected={isConnected}
-              onPress={connectToServer}
-            />
-            <View
-              style={{
-                flexDirection: "row-reverse",
-                justifyContent: "space-between",
-                padding: 16,
-              }}>
-              <Button
-                style={{
-                  borderRadius: 10,
-                  padding: 2,
-                  paddingHorizontal: 4,
-                  alignContent: "center",
-                  justifyContent: "center",
-                }}
-                onPress={() => {
-                  impactAsync(ImpactFeedbackStyle.Heavy);
-                  LayoutAnimation.configureNext(
-                    LayoutAnimation.Presets.easeInEaseOut,
-                  );
-                  setIsSorting(true);
-                }}>
-                <SquareStack color="black" />
-              </Button>
-            </View>
-          </>
-        }
+        isSorting={isSorting}
+        onPressItem={handlePressHotkey}
+        renderContextMenu={renderContextMenu}
+        onDragRelease={handleFinishedSorting}
+        ListHeaderComponent={headerComponent}
       />
+
+      {footerComponent}
       <Dialog
         open={open}
         onOpenChange={(isOpen) => {
@@ -366,13 +342,15 @@ export default function Index() {
         }}
         style={{ margin: 16 }}>
         <DialogTrigger>
-          <Button
-            onPress={() => {
-              setOpen(true);
-              setEditing(false);
-            }}>
-            <Text>Add new Hotkey!</Text>
-          </Button>
+          {isSorting ? null : (
+            <Button
+              onPress={() => {
+                setOpen(true);
+                setEditing(false);
+              }}>
+              <Text>Add new Hotkey!</Text>
+            </Button>
+          )}
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
