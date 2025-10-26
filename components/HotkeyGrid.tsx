@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View } from "react-native";
-import { FlatList, ScrollView } from "react-native-gesture-handler";
+import { View, FlatList, ScrollView } from "react-native";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import DraggableGrid from "react-native-draggable-grid";
 import { HotkeyData } from "@/lib/constants";

@@ -283,7 +283,7 @@ export default function Index() {
         isConnected={isConnected}
         onPress={connectToServer}
       />
-      <View
+      {/* <View
         style={{
           flexDirection: "row-reverse",
           justifyContent: "space-between",
@@ -306,7 +306,7 @@ export default function Index() {
           }}>
           <SquareStack color="black" />
         </Button>
-      </View>
+      </View> */}
     </>
   );
 
