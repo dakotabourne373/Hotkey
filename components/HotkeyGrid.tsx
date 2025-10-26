@@ -62,6 +62,7 @@ export const HotkeyGrid: React.FC<HotkeyGridProps> = ({
       backgroundColor: "#3c3f44",
       height: "100%",
       minHeight: 80,
+      pointerEvents: 'box-only'
     } as const;
 
     return isSorting ? (
