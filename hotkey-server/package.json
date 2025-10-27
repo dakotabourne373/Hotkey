@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-windows": "pkg . --targets node16-win-x64 --output dist/server.exe",
-    "build-linux": "pkg . --targets node16-linux-x64 --output dist/server-linux",
+    "build-windows": "pkg . --targets node16-win-x64 --output dist/hotkey-server.exe",
+    "build-linux": "pkg . --targets node16-linux-x64 --output dist/hotkey-server-linux",
     "build-all": "npm run build-windows && npm run build-linux"
   },
   "author": "",

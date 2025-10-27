@@ -9,7 +9,7 @@ const IS_LINUX = platform() === "linux";
 // grabbing local ip
 const interfaces = networkInterfaces();
 let localIp = "localhost";
-const port = IS_WINDOWS ? "8686" : "4328";
+const port = "8686";
 
 for (const name of Object.keys(interfaces)) {
   for (const iface of interfaces[name]) {
