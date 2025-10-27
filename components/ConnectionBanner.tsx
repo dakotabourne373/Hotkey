@@ -23,37 +23,50 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export namespace ConnectionBanner {
   export interface Props {
     connectedServer: string | undefined;
+    connectedPort: string | undefined;
     isConnected: boolean;
-    onPress: (string: string) => void;
+    onPress: (ip: string, port: string) => void;
   }
 }
 
 export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
   connectedServer,
+  connectedPort,
   isConnected,
   onPress,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [ipAddress, setIpAddress] = React.useState<string>();
-  const [error, setError] = React.useState(false);
+  const [port, setPort] = React.useState<string>();
+  const [ipError, setIpError] = React.useState(false);
+  const [portError, setPortError] = React.useState(false);
 
   const handleSubmit = (event: GestureResponderEvent) => {
-    setError(false);
+    setIpError(false);
+    const newPort = port || "8686";
     if (!ipAddress) {
       console.log("ip address is undefined");
       event.preventDefault();
-      setError(true);
+      setIpError(true);
       return;
     }
+    if (newPort.length >= 5) {
+      console.log("port error");
+      event.preventDefault();
+      setPortError(true);
+      return;
+    }
+
     AsyncStorage.setItem("computer-ip", ipAddress);
-    onPress(ipAddress);
+    AsyncStorage.setItem("server-port", newPort);
+    onPress(ipAddress, newPort);
   };
 
   React.useEffect(() => {
-    if (!ipAddress?.match(ipCheck)) {
-      setError(true);
+    if (ipAddress && !ipAddress?.match(ipCheck)) {
+      setIpError(true);
     } else {
-      setError(false);
+      setIpError(false);
     }
   }, [ipAddress]);
 
@@ -75,7 +88,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
             onPress={() => setOpen(true)}>
             <Text>
               {isConnected
-                ? `connected to ${connectedServer}:8686`
+                ? `connected to ${connectedServer}:${connectedPort}`
                 : "not connected"}
             </Text>
             <Settings color="black" />
@@ -84,10 +97,10 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
       </DialogTrigger>
       <DialogContent style={{ marginBottom: 120 }}>
         <DialogHeader>
-          <DialogTitle>Edit server ip</DialogTitle>
+          <DialogTitle>Edit server connection settings</DialogTitle>
           <DialogDescription>
-            Put in the ip of the computer running the server. Click save when
-            you're done.
+            Put in the displayed ip and port of the computer running the server.
+            Click save when you're done.
           </DialogDescription>
         </DialogHeader>
         <>
@@ -97,10 +110,10 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
             placeholder="192.168.1.200..."
             onChangeText={setIpAddress}
             aria-labelledby="ip-label"
-            aria-invalid={error}
+            aria-invalid={ipError}
             aria-errormessage="ip-error"
           />
-          {error ? (
+          {ipError ? (
             <Animated.View
               entering={FlipInXDown}
               exiting={FlipOutXDown}
@@ -117,9 +130,36 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
             </Animated.View>
           ) : null}
         </>
+        <>
+          <Label nativeID="port-label">Enter port</Label>
+          <Input
+            defaultValue="8686"
+            placeholder="8686"
+            onChangeText={setPort}
+            aria-labelledby="port-label"
+            aria-invalid={portError}
+            aria-errormessage="port-error"
+          />
+          {portError ? (
+            <Animated.View
+              entering={FlipInXDown}
+              exiting={FlipOutXDown}
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                alignContent: "flex-start",
+                gap: 4,
+              }}>
+              <Info color="red" size={16} style={{ marginTop: 3 }} />
+              <Label nativeID="port-error" style={{ color: "red" }}>
+                The port you submitted is invalid, please resubmit with a port
+              </Label>
+            </Animated.View>
+          ) : null}
+        </>
         <DialogFooter>
           <DialogClose asChild onPress={handleSubmit}>
-            <Button disabled={error}>
+            <Button disabled={ipError || portError}>
               <Text>Save</Text>
             </Button>
           </DialogClose>
