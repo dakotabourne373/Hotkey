@@ -50,6 +50,7 @@ import React, { useMemo } from "react";
 
 const createNewWebsocketServer = (
   ip: string,
+  port = "8686",
   options: {
     onopen: WebSocket["onopen"];
     onmessage: WebSocket["onmessage"];
@@ -57,7 +58,7 @@ const createNewWebsocketServer = (
     onclose: WebSocket["onclose"];
   },
 ) => {
-  const ws = new WebSocket(`ws://${ip}:8686`);
+  const ws = new WebSocket(`ws://${ip}:${port}`);
 
   ws.onopen = options.onopen;
   ws.onclose = options.onclose;
@@ -71,6 +72,7 @@ export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const websocket = useRef<WebSocket>(null);
   const [ip, setIp] = useState<string>();
+  const [port, setPort] = useState<string>();
   const [, setServerMessage] = useState("");
   const [savedHotkeys, setSavedHotkeys] = useState({});
   const [hotkeys, setHotkeys] = useState<HotkeyData[]>([]);
@@ -120,9 +122,10 @@ export default function Index() {
     };
   }, []);
 
-  const connectToServer = useCallback((newIp: string) => {
+  const connectToServer = useCallback((newIp: string, newPort: string) => {
     setIp(newIp);
-    const ws = createNewWebsocketServer(newIp, {
+    setPort(newPort);
+    const ws = createNewWebsocketServer(newIp, newPort, {
       onclose: (e) => {
         console.log("WebSocket connection closed:", e.code, e.reason);
         setIsConnected(false); // Update state if the connection closes
@@ -155,7 +158,11 @@ export default function Index() {
     let ws: WebSocket;
     AsyncStorage.getItem("computer-ip").then((savedIp) => {
       if (!savedIp) return;
-      ws = connectToServer(savedIp);
+      AsyncStorage.getItem("server-port").then((savedPort) => {
+        if (!savedPort) return;
+
+        ws = connectToServer(savedIp, savedPort);
+      });
     });
     // Clean up WebSocket connection when the component unmounts
     return () => {
@@ -165,8 +172,8 @@ export default function Index() {
 
   useEffect(() => {
     const listener = AppState.addEventListener("change", (state) => {
-      if (state === "active" && !isConnected && ip) {
-        connectToServer(ip);
+      if (state === "active" && !isConnected && ip && port) {
+        connectToServer(ip, port);
       } else if (state === "inactive" || state === "background") {
         // Close the WebSocket connection when the app is inactive
         websocket.current?.close();
@@ -177,7 +184,7 @@ export default function Index() {
     return () => {
       listener.remove();
     };
-  }, [isConnected, ip, connectToServer]);
+  }, [isConnected, ip, connectToServer, port]);
 
   const handleFinishedSorting = (newList: HotkeyData[]) => {
     setIsSorting(false);
@@ -280,6 +287,7 @@ export default function Index() {
     <>
       <ConnectionBanner
         connectedServer={ip}
+        connectedPort={port}
         isConnected={isConnected}
         onPress={connectToServer}
       />

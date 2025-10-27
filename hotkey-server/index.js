@@ -1,7 +1,10 @@
 const WebSocket = require("ws");
 const { exec } = require("child_process");
-const { networkInterfaces } = require("os");
+const { networkInterfaces, platform } = require("os");
 const { Buffer } = require("node:buffer");
+
+const IS_WINDOWS = platform() === "win32";
+const IS_LINUX = platform() === "linux";
 
 // grabbing local ip
 const interfaces = networkInterfaces();
@@ -51,8 +54,9 @@ wss.on("connection", (ws) => {
     const json = message && JSON.parse(message);
     const combo = json.keyCombo; // e.g., "F13+F14"
 
-    // PowerShell script for direct Windows API key injection
-    const powershellScript = `
+    if (IS_WINDOWS) {
+      // PowerShell script for direct Windows API key injection
+      const powershellScript = `
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -81,14 +85,12 @@ foreach ($key in $keys) {
 }
 `;
 
-    // Encode as Base64 to avoid escaping issues
-    const encodedScript = Buffer.from(powershellScript, "utf16le").toString(
-      "base64",
-    );
+      // Encode as Base64 to avoid escaping issues
+      const encodedScript = Buffer.from(powershellScript, "utf16le").toString(
+        "base64",
+      );
 
-    exec(
-      `powershell -EncodedCommand ${encodedScript}`,
-      (error, stdout, stderr) => {
+      exec(`powershell -EncodedCommand ${encodedScript}`, (error) => {
         if (error) {
           console.error("Key press failed:", error);
           ws.send(`Error: ${error.message}`);
@@ -96,8 +98,43 @@ foreach ($key in $keys) {
         }
         console.log("Key combo sent:", combo);
         ws.send(`Server received: ${message}`);
-      },
-    );
+      });
+    } else if (IS_LINUX) {
+      // Linux: Use xdotool for key injection
+      const keys = combo.split("+");
+
+      // Build xdotool command: press all keys, then release in reverse
+      let xdotoolCmd = "xdotool";
+
+      // Press keys
+      keys.forEach((key) => {
+        xdotoolCmd += ` keydown ${key}`;
+      });
+
+      // Release keys in reverse order
+      keys.reverse().forEach((key) => {
+        xdotoolCmd += ` keyup ${key}`;
+      });
+
+      exec(xdotoolCmd, (error) => {
+        if (error) {
+          console.error("Key press failed:", error);
+          if (error.message.includes("command not found")) {
+            ws.send(
+              `Error: xdotool not installed. Install with: sudo apt-get install xdotool`,
+            );
+          } else {
+            ws.send(`Error: ${error.message}`);
+          }
+          return;
+        }
+        console.log("Key combo sent:", combo);
+        ws.send(`Server received: ${message}`);
+      });
+    } else {
+      console.error("Unsupported platform:", platform());
+      ws.send(`Error: Unsupported platform: ${platform()}`);
+    }
   });
 
   // Handling client disconnection
@@ -107,7 +144,15 @@ foreach ($key in $keys) {
 });
 
 // tell user what local ip the computer is on to be used in the app.
-console.log(`WebSocket server is running on ws://${localIp}:8686`);
+console.log(`WebSocket server is running on ws://${localIp}:4328`);
+console.log(`Platform: ${platform()}`);
 console.log(
   `In the mobile application, type the following into the input box: ${localIp}`,
 );
+
+if (IS_LINUX) {
+  console.log(
+    "\nNote: Linux requires xdotool for key injection. Install with:",
+  );
+  console.log("  sudo apt-get install xdotool");
+}
