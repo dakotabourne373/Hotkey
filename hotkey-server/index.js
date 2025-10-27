@@ -9,6 +9,7 @@ const IS_LINUX = platform() === "linux";
 // grabbing local ip
 const interfaces = networkInterfaces();
 let localIp = "localhost";
+const port = IS_WINDOWS ? "8686" : "4328";
 
 for (const name of Object.keys(interfaces)) {
   for (const iface of interfaces[name]) {
@@ -19,7 +20,7 @@ for (const name of Object.keys(interfaces)) {
   }
 }
 
-const wss = new WebSocket.Server({ port: 8686 });
+const wss = new WebSocket.Server({ port: port });
 
 // list of valid keys
 // const keymapper = {
@@ -144,10 +145,13 @@ foreach ($key in $keys) {
 });
 
 // tell user what local ip the computer is on to be used in the app.
-console.log(`WebSocket server is running on ws://${localIp}:4328`);
+console.log(`WebSocket server is running on ws://${localIp}:${port}`);
 console.log(`Platform: ${platform()}`);
 console.log(
-  `In the mobile application, type the following into the input box: ${localIp}`,
+  `In the mobile application, type the following into the IP input box: ${localIp}`,
+);
+console.log(
+  `In the mobile application, type the following into the Port input box: ${port}`,
 );
 
 if (IS_LINUX) {
