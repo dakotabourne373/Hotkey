@@ -43,6 +43,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
 
   const handleSubmit = (event: GestureResponderEvent) => {
     setIpError(false);
+    setPortError(false);
     const newPort = port || "8686";
     if (!ipAddress) {
       console.log("ip address is undefined");
@@ -106,7 +107,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
         <>
           <Label nativeID="ip-label">Enter ip</Label>
           <Input
-            defaultValue={ipAddress}
+            defaultValue={connectedServer || ipAddress}
             placeholder="192.168.1.200..."
             onChangeText={setIpAddress}
             aria-labelledby="ip-label"
@@ -125,7 +126,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
               }}>
               <Info color="red" size={16} style={{ marginTop: 3 }} />
               <Label nativeID="ip-error" style={{ color: "red" }}>
-                The ip you submitted is invalid, please resubmit with a valid ip
+                The ip you submitted is invalid, please resubmit with a valid ip.
               </Label>
             </Animated.View>
           ) : null}
@@ -133,7 +134,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
         <>
           <Label nativeID="port-label">Enter port</Label>
           <Input
-            defaultValue="8686"
+            defaultValue={connectedPort || port || "8686"}
             placeholder="8686"
             onChangeText={setPort}
             aria-labelledby="port-label"
@@ -152,7 +153,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
               }}>
               <Info color="red" size={16} style={{ marginTop: 3 }} />
               <Label nativeID="port-error" style={{ color: "red" }}>
-                The port you submitted is invalid, please resubmit with a port
+                The port you submitted is invalid, please resubmit with a valid port number.
               </Label>
             </Animated.View>
           ) : null}
