@@ -159,9 +159,7 @@ export default function Index() {
     AsyncStorage.getItem("computer-ip").then((savedIp) => {
       if (!savedIp) return;
       AsyncStorage.getItem("server-port").then((savedPort) => {
-        if (!savedPort) return;
-
-        ws = connectToServer(savedIp, savedPort);
+        ws = connectToServer(savedIp, savedPort || '8686');
       });
     });
     // Clean up WebSocket connection when the component unmounts
