@@ -416,11 +416,11 @@ export default function Index() {
                 onChangeText={setDesc}
               />
             </View>
-            <View
+            {/* <View
               style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
               <Label>See instructions for Recording the hotkey</Label>
               <Info color="white" />
-            </View>
+            </View> */}
           </View>
           <DialogFooter>
             <DialogClose
