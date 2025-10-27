@@ -31,6 +31,7 @@ export namespace ConnectionBanner {
 
 export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
   connectedServer,
+  connectedPort,
   isConnected,
   onPress,
 }) => {
@@ -87,7 +88,7 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
             onPress={() => setOpen(true)}>
             <Text>
               {isConnected
-                ? `connected to ${connectedServer}:8686`
+                ? `connected to ${connectedServer}:${connectedPort}`
                 : "not connected"}
             </Text>
             <Settings color="black" />
