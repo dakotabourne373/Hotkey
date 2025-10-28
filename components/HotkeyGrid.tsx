@@ -4,11 +4,10 @@ import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import DraggableGrid from "react-native-draggable-grid";
 import { HotkeyData } from "@/lib/constants";
 import { SpecifiedIcon } from "./SpecifiedIcon";
-import { Button, buttonVariants } from "./ui/button";
+import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { AlertTriangle } from "lucide-react-native";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { cn } from "@/lib/utils";
 
 interface HotkeyGridProps {
   data: HotkeyData[];
@@ -62,7 +61,7 @@ export const HotkeyGrid: React.FC<HotkeyGridProps> = ({
       backgroundColor: "#3c3f44",
       height: "100%",
       minHeight: 80,
-      pointerEvents: 'box-only'
+      pointerEvents: "box-only",
     } as const;
 
     return isSorting ? (
