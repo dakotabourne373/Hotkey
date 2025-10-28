@@ -5,7 +5,7 @@ Cross-platform WebSocket server for triggering keyboard shortcuts remotely from 
 ## Supported Platforms
 
 - **Windows**: Uses PowerShell with native Windows API (`keybd_event`)
-- **Linux**: Uses `xdotool` for X11 key injection
+- **Linux**: Uses `dotool` for uinput-based key injection (works on X11, Wayland, and TTYs)
 
 ## Requirements
 
@@ -13,9 +13,19 @@ Cross-platform WebSocket server for triggering keyboard shortcuts remotely from 
 - No additional requirements - uses built-in PowerShell
 
 ### Linux
-- `xdotool` must be installed:
+
+- `dotool` must be installed. See [installation guide](https://git.sr.ht/~geb/dotool)
+- Your user must be in the `input` group:
+
   ```bash
-  sudo apt-get install xdotool
+  sudo usermod -aG input $USER
+  # Log out and back in for changes to take effect
+  ```
+
+- Reload udev rules (one-time setup):
+
+  ```bash
+  sudo udevadm control --reload && sudo udevadm trigger
   ```
 
 ## Installation
@@ -87,9 +97,10 @@ F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24
 - Works with Discord, OBS, and other applications that support F13-F24 hotkeys
 
 ### Linux
-- Uses `xdotool` to simulate key presses
-- Command format: `xdotool keydown F13 keydown F14 keyup F14 keyup F13`
-- Works with most X11-based applications
+- Uses `dotool` to simulate key presses via uinput
+- Command format: `echo 'keydown f13; keydown f14; keyup f14; keyup f13' | dotool`
+- Works on X11, Wayland, and even TTYs
+- Does not require window focus (unlike xdotool)
 
 ## Troubleshooting
 
@@ -98,9 +109,9 @@ F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24
 - Some games with anti-cheat may block simulated key presses
 
 ### Linux
-- If you get "xdotool: command not found", install xdotool
-- If keys don't work, ensure you're running X11 (not Wayland)
-- For Wayland support, you may need additional tools like `ydotool`
+- If you get "dotool: command not found", install dotool from https://git.sr.ht/~geb/dotool
+- If you get permission errors, ensure your user is in the `input` group
+- Make sure udev rules are loaded (see Requirements section above)
 
 ## Notes
 

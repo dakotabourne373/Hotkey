@@ -101,28 +101,36 @@ foreach ($key in $keys) {
         ws.send(`Server received: ${message}`);
       });
     } else if (IS_LINUX) {
-      // Linux: Use xdotool for key injection
+      // Linux: Use dotool for key injection (works without window focus)
       const keys = combo.split("+");
 
-      // Build xdotool command: press all keys, then release in reverse
-      let xdotoolCmd = "xdotool";
+      // Build dotool command: press all keys, then release in reverse
+      let dotoolCmd = "";
 
       // Press keys
       keys.forEach((key) => {
-        xdotoolCmd += ` keydown ${key}`;
+        dotoolCmd += `keydown ${key.toLowerCase()}; `;
       });
 
       // Release keys in reverse order
       keys.reverse().forEach((key) => {
-        xdotoolCmd += ` keyup ${key}`;
+        dotoolCmd += `keyup ${key.toLowerCase()}; `;
       });
 
-      exec(xdotoolCmd, (error) => {
+      // Remove trailing semicolon and space
+      dotoolCmd = dotoolCmd.trim().slice(0, -1);
+
+      // Execute using echo and pipe to dotool
+      exec(`echo '${dotoolCmd}' | dotool`, (error) => {
         if (error) {
           console.error("Key press failed:", error);
           if (error.message.includes("command not found")) {
             ws.send(
-              `Error: xdotool not installed. Install with: sudo apt-get install xdotool`,
+              `Error: dotool not installed. See https://git.sr.ht/~geb/dotool for installation`,
+            );
+          } else if (error.message.includes("Permission denied")) {
+            ws.send(
+              `Error: dotool requires permission. Add user to input group: sudo usermod -aG input $USER`,
             );
           } else {
             ws.send(`Error: ${error.message}`);
@@ -156,7 +164,10 @@ console.log(
 
 if (IS_LINUX) {
   console.log(
-    "\nNote: Linux requires xdotool for key injection. Install with:",
+    "\nNote: Linux requires dotool for key injection. See installation guide:",
   );
-  console.log("  sudo apt-get install xdotool");
+  console.log("  https://git.sr.ht/~geb/dotool");
+  console.log(
+    "  Your user must be in the 'input' group: sudo usermod -aG input $USER",
+  );
 }
