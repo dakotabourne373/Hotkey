@@ -18,7 +18,6 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Info } from "lucide-react-native";
 import Animated, { FlipInXDown, FlipOutXDown } from "react-native-reanimated";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export namespace ConnectionBanner {
   export interface Props {
@@ -36,8 +35,10 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
   onPress,
 }) => {
   const [open, setOpen] = React.useState(false);
-  const [ipAddress, setIpAddress] = React.useState<string>();
-  const [port, setPort] = React.useState<string>();
+  const [ipAddress, setIpAddress] = React.useState<string | undefined>(
+    connectedServer,
+  );
+  const [port, setPort] = React.useState<string | undefined>(connectedPort);
   const [ipError, setIpError] = React.useState(false);
   const [portError, setPortError] = React.useState(false);
 
@@ -58,18 +59,23 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
       return;
     }
 
-    AsyncStorage.setItem("computer-ip", ipAddress);
-    AsyncStorage.setItem("server-port", newPort);
     onPress(ipAddress, newPort);
   };
 
   React.useEffect(() => {
-    if (ipAddress && !ipAddress?.match(ipCheck)) {
+    if (!connectedServer && ipAddress && !ipAddress.match(ipCheck)) {
       setIpError(true);
     } else {
       setIpError(false);
     }
-  }, [ipAddress]);
+  }, [ipAddress, connectedServer]);
+
+  React.useEffect(() => {
+    if (connectedServer) setIpAddress(connectedServer);
+  }, [connectedServer]);
+  React.useEffect(() => {
+    if (connectedPort) setPort(connectedPort);
+  }, [connectedPort]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen} style={{ width: "100%" }}>
@@ -107,12 +113,13 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
         <>
           <Label nativeID="ip-label">Enter ip</Label>
           <Input
-            defaultValue={connectedServer || ipAddress}
+            value={ipAddress}
             placeholder="192.168.1.200..."
             onChangeText={setIpAddress}
             aria-labelledby="ip-label"
             aria-invalid={ipError}
             aria-errormessage="ip-error"
+            keyboardType="numeric"
           />
           {ipError ? (
             <Animated.View
@@ -126,7 +133,8 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
               }}>
               <Info color="red" size={16} style={{ marginTop: 3 }} />
               <Label nativeID="ip-error" style={{ color: "red" }}>
-                The ip you submitted is invalid, please resubmit with a valid ip.
+                The ip you submitted is invalid, please resubmit with a valid
+                ip.
               </Label>
             </Animated.View>
           ) : null}
@@ -134,12 +142,13 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
         <>
           <Label nativeID="port-label">Enter port</Label>
           <Input
-            defaultValue={connectedPort || port || "8686"}
+            value={port}
             placeholder="8686"
             onChangeText={setPort}
             aria-labelledby="port-label"
             aria-invalid={portError}
             aria-errormessage="port-error"
+            keyboardType="numeric"
           />
           {portError ? (
             <Animated.View
@@ -153,7 +162,8 @@ export const ConnectionBanner: React.FC<ConnectionBanner.Props> = ({
               }}>
               <Info color="red" size={16} style={{ marginTop: 3 }} />
               <Label nativeID="port-error" style={{ color: "red" }}>
-                The port you submitted is invalid, please resubmit with a valid port number.
+                The port you submitted is invalid, please resubmit with a valid
+                port number.
               </Label>
             </Animated.View>
           ) : null}

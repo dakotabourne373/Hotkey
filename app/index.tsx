@@ -22,14 +22,7 @@ import { IconFormContext } from "@/context/IconFormContext";
 import { HotkeyData, KEYS, SavedHotkeys } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link } from "expo-router";
-import {
-  AlertTriangle,
-  CheckCheck,
-  Info,
-  Pencil,
-  Plus,
-  SquareStack,
-} from "lucide-react-native";
+import { AlertTriangle, CheckCheck, Pencil, Plus } from "lucide-react-native";
 import { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { View, AppState, LayoutAnimation } from "react-native";
 import {
@@ -46,6 +39,7 @@ import {
 } from "@/lib/hotkey-utils";
 import { SpecifiedIcon } from "@/components/SpecifiedIcon";
 import { HotkeyGrid } from "@/components/HotkeyGrid";
+import { Loader } from "@/components/Loader";
 import React, { useMemo } from "react";
 
 const createNewWebsocketServer = (
@@ -70,6 +64,7 @@ const createNewWebsocketServer = (
 
 export default function Index() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isConnecting, setIsConnecting] = useState<boolean>(true);
   const websocket = useRef<WebSocket>(null);
   const [ip, setIp] = useState<string>();
   const [port, setPort] = useState<string>();
@@ -123,6 +118,9 @@ export default function Index() {
   }, []);
 
   const connectToServer = useCallback((newIp: string, newPort: string) => {
+    websocket.current?.close();
+    setIsConnecting(true);
+    setIsConnected(false);
     setIp(newIp);
     setPort(newPort);
     const ws = createNewWebsocketServer(newIp, newPort, {
@@ -137,6 +135,7 @@ export default function Index() {
         setIsConnected(false); // Update state if there is an error
         // @ts-ignore
         websocket.current = null;
+        setIsConnecting(false);
       },
       onmessage: (e: WebSocketMessageEvent) => {
         console.log("Message from server:", e.data);
@@ -145,7 +144,10 @@ export default function Index() {
       onopen: () => {
         console.log("WebSocket connection opened");
         // to send message you can use like that :   ws.send("Hello, server!");
+        AsyncStorage.setItem("computer-ip", newIp);
+        AsyncStorage.setItem("server-port", newPort);
         setIsConnected(true); // Update state to reflect successful connection
+        setIsConnecting(false);
         // @ts-ignore
         websocket.current = ws;
       },
@@ -156,10 +158,14 @@ export default function Index() {
 
   useEffect(() => {
     let ws: WebSocket;
+    setIsConnecting(true);
     AsyncStorage.getItem("computer-ip").then((savedIp) => {
-      if (!savedIp) return;
+      if (!savedIp) {
+        setIsConnecting(false);
+        return;
+      }
       AsyncStorage.getItem("server-port").then((savedPort) => {
-        ws = connectToServer(savedIp, savedPort || '8686');
+        ws = connectToServer(savedIp, savedPort || "8686");
       });
     });
     // Clean up WebSocket connection when the component unmounts
@@ -485,6 +491,7 @@ export default function Index() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Loader visible={!isConnected && isConnecting} />
     </SafeAreaView>
   );
 }

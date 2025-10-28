@@ -34,7 +34,7 @@ export default function Modal() {
 
   return (
     <FlashList
-      contentContainerStyle={{alignContent: "center", paddingHorizontal: 16}}
+      contentContainerStyle={{ alignContent: "center", paddingHorizontal: 16 }}
       ListHeaderComponent={
         <View style={{ paddingVertical: 16 }}>
           <Input
